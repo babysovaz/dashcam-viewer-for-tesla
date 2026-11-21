@@ -11,5 +11,6 @@ contextBridge.exposeInMainWorld("api", {
   manualToken: raw => ipcRenderer.invoke("auth-manual", raw),
   signOut: () => ipcRenderer.invoke("auth-signout"),
   forgetKeys: () => ipcRenderer.invoke("forget-keys"),
+  setLang: lang => ipcRenderer.invoke("set-lang", lang),
   onAuth: cb => ipcRenderer.on("auth-changed", (_e, s) => cb(s)),
 });

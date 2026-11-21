@@ -68,7 +68,7 @@ async function fetchKeys(paths, token) {
   const res = { unlocked: 0, already: 0, noEscrow: 0, failed: [] };
   for (const p of paths) {
     let i;
-    try { i = info(p); } catch { res.failed.push([p, "illisible"]); continue; }
+    try { i = info(p); } catch { res.failed.push([p, "unreadable"]); continue; }
     if (i.kind !== "container") continue;
     if (!i.escrow) { res.noEscrow++; continue; }
     if (loadCache().has(i.cid)) { res.already++; continue; }
@@ -100,14 +100,14 @@ async function fetchKeys(paths, token) {
       body,
     });
     if (r.status === 401 || r.status === 403) { const err = new Error("token"); err.status = 401; throw err; }
-    if (!r.ok) throw new Error(`Tesla a répondu ${r.status}`);
+    if (!r.ok) { const err = new Error(`Tesla replied ${r.status}`); err.code = "status"; err.httpStatus = r.status; throw err; }
     const json = await r.json();
     const byId = new Map((json.results || []).map(x => [x.id, x]));
     for (const p of batch) {
       const i = info(p), out = byId.get(i.id);
-      if (!out || out.error || !out.key) { res.failed.push([p, (out && out.error) || "pas de clé"]); continue; }
+      if (!out || out.error || !out.key) { res.failed.push([p, (out && out.error) || "nokey"]); continue; }
       const key = Buffer.from(out.key, "base64");
-      if (key.length !== 16 || !c.keyLooksRight(p, key, kindOf(p))) { res.failed.push([p, "clé incorrecte"]); continue; }
+      if (key.length !== 16 || !c.keyLooksRight(p, key, kindOf(p))) { res.failed.push([p, "badkey"]); continue; }
       loadCache().set(i.cid, key.toString("base64"));
       res.unlocked++;
     }

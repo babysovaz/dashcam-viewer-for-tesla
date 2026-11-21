@@ -78,13 +78,13 @@ async function handSample(contents, file) {
  * Get a token. silent=true first tries in a hidden window using saved cookies; if Tesla asks
  * for a password the window is shown. Resolves with true when connected, false if closed.
  */
-function connect({ sampleFile, silent = false, parent } = {}) {
+function connect({ sampleFile, silent = false, parent, title } = {}) {
   if (token) return Promise.resolve(true);
   installInterceptor();
   if (win && !win.isDestroyed()) { win.show(); win.focus(); }
   else {
     win = new BrowserWindow({
-      width: 980, height: 760, show: !silent, parent, title: "Connexion Tesla — dashcam.tesla.com",
+      width: 980, height: 760, show: !silent, parent, title: title || "Tesla — dashcam.tesla.com",
       autoHideMenuBar: true,
       webPreferences: { partition: PARTITION, contextIsolation: true, sandbox: true, nodeIntegration: false },
     });

@@ -3,6 +3,16 @@
 Chaque version est décrite en français puis en anglais. Les notes de release GitHub sont générées à partir de ce fichier.
 Each version is described in French, then in English. GitHub release notes are generated from this file.
 
+## [0.4.0] - 2026-11-22
+
+### 🇫🇷 Français
+- **Interface bilingue français / anglais** : la langue de Windows est choisie automatiquement, un sélecteur 🇫🇷 / 🇬🇧 en haut à droite permet de changer à tout moment (choix mémorisé). Dates, raisons d'événement, télémétrie et messages d'erreur suivent la langue.
+- Notes de release : correction de la ligne de titre en trop.
+
+### 🇬🇧 English
+- **Bilingual French / English interface**: the Windows language is picked automatically, a 🇫🇷 / 🇬🇧 selector at the top right switches at any time (choice remembered). Dates, event reasons, telemetry and error messages follow the language.
+- Release notes: removed the stray title line.
+
 ## [0.3.0] - 2026-11-22
 
 ### 🇫🇷 Français

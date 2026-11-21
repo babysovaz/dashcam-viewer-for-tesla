@@ -12,6 +12,7 @@ Lecteur Windows pour les clips **Dashcam / Sentinelle** enregistrés par une Tes
 - **Clips chiffrés** : déchiffrement **local et à la volée** (seul ce qui est regardé est déchiffré, rien n'est écrit en clair sur le disque).
 - **Télémétrie** embarquée par Tesla dans la vidéo : vitesse, rapport, angle du volant, accélérateur, frein, clignotants, Autosteer / FSD.
 - **Repère de l'événement** sur la timeline, vignettes, filtres Enregistrés / Sentinelle / Récents, raccourcis clavier.
+- **Interface en français / anglais**, selon la langue de Windows, modifiable à tout moment.
 
 ## Confidentialité
 

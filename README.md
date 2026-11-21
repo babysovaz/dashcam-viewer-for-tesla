@@ -12,6 +12,7 @@ A Windows player for the **Dashcam / Sentry Mode** clips a Tesla records on its 
 - **Encrypted clips**: **local, on-the-fly** decryption — only what you watch gets decrypted, nothing is ever written to disk in clear.
 - **Telemetry** that Tesla embeds in the video: speed, gear, steering angle, accelerator, brake, turn signals, Autosteer / FSD.
 - **Event marker** on the timeline, thumbnails, Saved / Sentry / Recent filters, keyboard shortcuts.
+- **English / French interface**, following the Windows language, switchable at any time.
 
 ## Privacy
 

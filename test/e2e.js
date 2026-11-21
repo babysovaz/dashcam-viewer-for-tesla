@@ -36,6 +36,11 @@ module.exports = async (win, entries, app) => {
     await sleep(4000);
     log("thumbs:", await run('JSON.stringify(events.map(e => [e.folder, e.thumbUrl ? (e.thumbUrl.startsWith("data:") ? "generated" : "file") : (e.thumbFailed ? "failed" : "none")]))'));
     log("broken imgs:", await run('[...document.querySelectorAll(".ev img")].filter(i => i.complete && !i.naturalWidth).length'));
+    log("FR texts:", await run('JSON.stringify([document.querySelector("#pick").textContent, document.querySelector("#auth").textContent, document.querySelector("#hBrake").textContent, document.querySelector(".cam .lbl").textContent, document.querySelector("#layoutSel").selectedOptions[0].textContent])'));
+    await run('document.querySelector("#langSel").value = "en"; document.querySelector("#langSel").dispatchEvent(new Event("change"))'); await sleep(800);
+    log("EN texts:", await run('JSON.stringify([document.querySelector("#pick").textContent, document.querySelector("#status").textContent, document.querySelector("#auth").textContent, document.querySelector("#hBrake").textContent, document.querySelector("#hAp").textContent, document.querySelector(".cam .lbl").textContent, document.querySelector("#layoutSel").selectedOptions[0].textContent, document.querySelector("#info").textContent, document.querySelector(".day").textContent, document.querySelector(".ev .s").textContent])'));
+    log("untranslated French left in visible UI:", await run('JSON.stringify([...new Set((document.body.innerText.match(/[^\\n]*[éèàêç][^\\n]*/g) || []))].slice(0, 8))'));
+    fs.writeFileSync("/tmp/tcv-e2e-en.png", (await win.webContents.capturePage()).toPNG());
     log("locked clip served as:", await run('fetch(url(events.find(e => e.folder === "2026-11-08_10-00-00").segs[0].files.front)).then(r => r.status)'));
     log("file outside folder served as:", await run('fetch(url("/etc/passwd")).then(r => r.status)'));
   } catch (e) { log("ERROR", e.message); }

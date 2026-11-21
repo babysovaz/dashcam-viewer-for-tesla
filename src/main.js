@@ -14,7 +14,14 @@ protocol.registerSchemesAsPrivileged([{
 
 let mainWin = null;
 let root = null;          // folder chosen by the user: nothing outside it is ever served
-let sampleFile = null;    // one encrypted clip, used to trigger the sign-in token capture
+let sampleFile = null;
+// UI language, set by the renderer; only used for the few texts drawn by this process.
+let lang = "fr";
+const TXT = {
+  fr: { pick: "Choisir le dossier TeslaCam", login: "Connexion Tesla — dashcam.tesla.com" },
+  en: { pick: "Choose the TeslaCam folder", login: "Tesla sign-in — dashcam.tesla.com" },
+};
+const tx = k => (TXT[lang] || TXT.fr)[k];    // one encrypted clip, used to trigger the sign-in token capture
 
 const SKIP = /^(Photobooth|Sketchpad|TeslaTrackMode|\$RECYCLE\.BIN|System Volume Information|\.)/i;
 const MIME = { mp4: "video/mp4", json: "application/json", png: "image/png" };
@@ -99,13 +106,17 @@ async function serve(req) {
 async function withToken(fn) {
   for (let attempt = 0; attempt < 2; attempt++) {
     if (!auth.getToken()) {
-      const ok = await auth.connect({ sampleFile, silent: attempt === 0, parent: mainWin });
+      const ok = await auth.connect({ sampleFile, silent: attempt === 0, parent: mainWin, title: tx("login") });
       if (!ok) return { cancelled: true };
     }
     try { return await fn(auth.getToken()); }
-    catch (e) { if (e.status === 401) { auth.invalidate(); continue; } return { error: e.message }; }
+    catch (e) {
+      if (e.status === 401) { auth.invalidate(); continue; }
+      // Codes, not sentences: the renderer words them in the user's language.
+      return e.code === "status" ? { error: "status", status: e.httpStatus } : { error: "other", message: e.message };
+    }
   }
-  return { error: "Connexion Tesla refusée" };
+  return { error: "refused" };
 }
 
 function createWindow() {
@@ -122,7 +133,7 @@ app.whenReady().then(() => {
   protocol.handle("tcam", req => serve(req).catch(e => new Response(String(e.message), { status: 500 })));
 
   ipcMain.handle("pick-folder", async () => {
-    const r = await dialog.showOpenDialog(mainWin, { title: "Choisir le dossier TeslaCam", properties: ["openDirectory"] });
+    const r = await dialog.showOpenDialog(mainWin, { title: tx("pick"), properties: ["openDirectory"] });
     if (r.canceled || !r.filePaths[0]) return null;
     root = path.resolve(r.filePaths[0]);
     return { name: path.basename(root) || root, entries: scan(root) };
@@ -145,7 +156,8 @@ app.whenReady().then(() => {
     } catch { return null; }
   });
   ipcMain.handle("auth-status", () => auth.status());
-  ipcMain.handle("auth-connect", async () => ({ ok: await auth.connect({ sampleFile, parent: mainWin }) }));
+  ipcMain.handle("auth-connect", async () => ({ ok: await auth.connect({ sampleFile, parent: mainWin, title: tx("login") }) }));
+  ipcMain.handle("set-lang", (_e, l) => { if (TXT[l]) lang = l; });
   ipcMain.handle("auth-manual", (_e, raw) => auth.setManual(raw));
   ipcMain.handle("auth-signout", async () => { await auth.signOut(); return auth.status(); });
   ipcMain.handle("forget-keys", () => { keys.clearCache(); return true; });

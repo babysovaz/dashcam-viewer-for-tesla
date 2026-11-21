@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' tcam:; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src tcam: data:; media-src tcam:; connect-src tcam:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' tcam:; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src tcam: data:; media-src tcam:; connect-src tcam:">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TeslaCam Viewer</title>
 <style>
@@ -64,7 +64,7 @@
   .cam video { width:100%; height:100%; object-fit:contain; display:block; }
   .cam .lbl { position:absolute; left:6px; top:4px; font-size:11px; padding:1px 6px; background:rgba(0,0,0,.6); border-radius:3px; pointer-events:none; }
   .cam .lbl kbd { color:var(--dim); font:inherit; margin-left:4px; }
-  .cam.missing::after { content:"pas d'image"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#555; font-size:12px; }
+  .cam.missing::after { content:attr(data-missing); position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#555; font-size:12px; }
   #bar { padding:8px 14px 10px; border-top:1px solid var(--line); background:var(--panel); }
   #tl { position:relative; height:24px; margin-top:12px; }
   #tl input { width:100%; margin:0; position:absolute; top:4px; accent-color:var(--acc); }
@@ -85,84 +85,75 @@
 <body>
 <header>
   <h1><b>T</b> TeslaCam Viewer</h1>
-  <button class="primary" id="pick">📂 Ouvrir le dossier TeslaCam</button>
-  <span id="status">Sélectionne le dossier TeslaCam (ex. D:\TeslaCam). Les vidéos ne quittent jamais ce PC.</span>
-  <button id="auth" style="margin-left:auto">🔑 Connexion Tesla</button>
+  <button class="primary" id="pick" data-i18n="open_folder"></button>
+  <span id="status" data-i18n="status_hint"></span>
+  <select id="langSel" data-i18n-title="lang_t" style="margin-left:auto"><option value="fr">🇫🇷 FR</option><option value="en">🇬🇧 EN</option></select>
+  <button id="auth"></button>
 </header>
 <main>
   <aside>
     <div class="filters">
-      <button data-f="all" class="on">Tout</button>
-      <button data-f="SavedClips">Enregistrés</button>
-      <button data-f="SentryClips">Sentinelle</button>
-      <button data-f="RecentClips">Récents</button>
+      <button data-f="all" class="on" data-i18n="f_all"></button>
+      <button data-f="SavedClips" data-i18n="f_saved"></button>
+      <button data-f="SentryClips" data-i18n="f_sentry"></button>
+      <button data-f="RecentClips" data-i18n="f_recent"></button>
     </div>
     <div id="list"></div>
   </aside>
   <section id="player">
-    <div id="empty"><div class="big">🎥</div><div>Ouvre ton dossier TeslaCam puis choisis un événement à gauche.</div></div>
+    <div id="empty"><div class="big">🎥</div><div data-i18n="empty"></div></div>
     <div id="stage" class="car" hidden></div>
     <div id="bar" hidden>
-      <div id="tl"><input type="range" id="seek" min="0" max="60" step="0.05" value="0"><div id="mark"><span class="flag" title="Moment de l'événement">⚑</span></div></div>
+      <div id="tl"><input type="range" id="seek" min="0" max="60" step="0.05" value="0"><div id="mark"><span class="flag" data-i18n-title="flag_title">⚑</span></div></div>
       <div id="row">
-        <button id="prevEv" title="Événement précédent (↑)">⏮</button>
-        <button id="play" title="Lecture / pause (Espace)">▶</button>
-        <button id="nextEv" title="Événement suivant (↓)">⏭</button>
+        <button id="prevEv" data-i18n-title="prev_ev">⏮</button>
+        <button id="play" data-i18n-title="play_t">▶</button>
+        <button id="nextEv" data-i18n-title="next_ev">⏭</button>
         <span id="clock">--:--:--</span><span id="rel">0:00 / 0:00</span>
-        <select id="rate" title="Vitesse (+ / -)"><option>0.25</option><option>0.5</option><option selected>1</option><option>2</option><option>4</option></select>
-        <select id="layoutSel" title="Disposition (G pour changer, Échap pour revenir)">
-          <option value="car">🚗 Comme dans la voiture</option><option value="fb">Avant + Arrière en grand</option>
-          <option value="focus">Une caméra en grand</option><option value="grid">Grille 3×2</option></select>
-        <button id="hudBtn" title="Télémétrie : vitesse, pédales, volant… (T)">📊 Télémétrie</button>
-        <button id="toEvent" title="Aller au moment de l'événement (E)">⚑ Événement</button>
+        <select id="rate" data-i18n-title="rate_t"><option>0.25</option><option>0.5</option><option selected>1</option><option>2</option><option>4</option></select>
+        <select id="layoutSel" data-i18n-title="layout_t">
+          <option value="car" data-i18n="lay_car"></option><option value="fb" data-i18n="lay_fb"></option>
+          <option value="focus" data-i18n="lay_focus"></option><option value="grid" data-i18n="lay_grid"></option></select>
+        <button id="hudBtn" data-i18n-title="hud_t" data-i18n="hud_btn"></button>
+        <button id="toEvent" data-i18n-title="toevent_t" data-i18n="toevent"></button>
         <span id="info"></span>
       </div>
-      <div id="help"><kbd>Espace</kbd> lecture · <kbd>←</kbd><kbd>→</kbd> ±5 s · <kbd>Maj</kbd>+<kbd>←</kbd><kbd>→</kbd> ±1 s · <kbd>1</kbd>–<kbd>6</kbd> caméra · <kbd>G</kbd> disposition · <kbd>T</kbd> télémétrie · <kbd>Échap</kbd> vue par défaut · <kbd>E</kbd> événement · <kbd>↑</kbd><kbd>↓</kbd> événement préc./suiv. · <kbd>F</kbd> plein écran · clic = caméra principale</div>
+      <div id="help" data-i18n="help"></div>
     </div>
   </section>
 </main>
 <div id="toast"></div>
 <dialog id="authDlg">
-  <h3 style="margin-top:0">Compte Tesla</h3>
+  <h3 style="margin-top:0" data-i18n="acct_title"></h3>
   <p id="authState" style="color:var(--dim)"></p>
-  <p style="color:var(--dim);font-size:12px;max-width:460px">La connexion se fait sur la vraie page dashcam.tesla.com : ton mot de passe ne va qu'à Tesla.
-  Seules les petites métadonnées de clé de chaque clip sont envoyées à Tesla, jamais la vidéo. Les clés reçues sont gardées
-  chiffrées sur ce PC (protection Windows) : un clip déverrouillé une fois se relit ensuite sans connexion.</p>
+  <p style="color:var(--dim);font-size:12px;max-width:460px" data-i18n="acct_info"></p>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <button id="dlgConnect" class="primary">Se connecter</button>
-    <button id="dlgSignout">Se déconnecter</button>
-    <button id="dlgForget">Oublier les clés enregistrées</button>
-    <button id="dlgClose" style="margin-left:auto">Fermer</button>
+    <button id="dlgConnect" class="primary" data-i18n="connect"></button>
+    <button id="dlgSignout" data-i18n="signout"></button>
+    <button id="dlgForget" data-i18n="forget"></button>
+    <button id="dlgClose" style="margin-left:auto" data-i18n="close"></button>
   </div>
-  <details style="margin-top:12px"><summary style="cursor:pointer;color:var(--dim);font-size:12px">Secours : coller un jeton manuellement</summary>
-    <p style="color:var(--dim);font-size:12px">Sur dashcam.tesla.com dans Edge : F12 → Réseau → glisse un clip → requête /api/1/… → copie la valeur « Authorization ».</p>
+  <details style="margin-top:12px"><summary style="cursor:pointer;color:var(--dim);font-size:12px" data-i18n="manual_sum"></summary>
+    <p style="color:var(--dim);font-size:12px" data-i18n="manual_help"></p>
     <input id="dlgToken" type="password" placeholder="Bearer eyJ…" style="width:100%;padding:6px;background:#111;color:#eee;border:1px solid #333;border-radius:4px">
-    <button id="dlgTokenOk" style="margin-top:6px">Utiliser ce jeton</button>
+    <button id="dlgTokenOk" style="margin-top:6px" data-i18n="use_token"></button>
   </details>
 </dialog>
+<script src="i18n.js"></script>
 <script>
 "use strict";
 // Display order in grid mode mirrors the car's viewer: pillars/front on top, repeaters/back below.
 const CAMS = [
-  { id:"left_pillar",    label:"Montant G",    key:"5" },
-  { id:"front",          label:"Avant",        key:"1" },
-  { id:"right_pillar",   label:"Montant D",    key:"6" },
-  { id:"left_repeater",  label:"Répétiteur G", key:"3" },
-  { id:"back",           label:"Arrière",      key:"2" },
-  { id:"right_repeater", label:"Répétiteur D", key:"4" },
+  { id:"left_pillar",    key:"5" },
+  { id:"front",          key:"1" },
+  { id:"right_pillar",   key:"6" },
+  { id:"left_repeater",  key:"3" },
+  { id:"back",           key:"2" },
+  { id:"right_repeater", key:"4" },
 ];
-const TYPES = { SavedClips:"Enregistré", SentryClips:"Sentinelle", RecentClips:"Récent" };
-const REASONS = {
-  user_interaction_dashcam_multifunction_selected:"Enregistré (molette)",
-  user_interaction_dashcam_icon_tapped:"Enregistré (écran)",
-  user_interaction_dashcam_panel_save:"Enregistré (écran)",
-  user_interaction_honk:"Enregistré (klaxon)",
-  user_interaction_dashcam_launcher_action_tapped:"Enregistré (écran)",
-  sentry_aware_object_detection:"Sentinelle : mouvement",
-  sentry_aware_accel:"Sentinelle : choc détecté",
-  sentry_locked_handle_pulled:"Sentinelle : poignée tirée",
-  vehicle_auto_emergency_braking:"Freinage d'urgence",
-};
+const TYPES = { SavedClips: 1, SentryClips: 1, RecentClips: 1 };   // the folders Tesla writes clips to
+const typeName = type => t("type_" + type);
+const reasonName = r => r ? (I18N[LANG]["r_" + r] ? t("r_" + r) : r.replace(/_/g, " ")) : "";
 // Segment file name: 2026-04-17_15-08-49-front.mp4
 const RX = /^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})-(front|back|left_repeater|right_repeater|left_pillar|right_pillar)\.mp4$/;
 const $ = s => document.querySelector(s);
@@ -177,7 +168,7 @@ const stage = $("#stage");
 for (const c of CAMS) {
   const d = document.createElement("div");
   d.className = "cam"; d.dataset.cam = c.id;
-  d.innerHTML = `<video muted playsinline preload="auto"></video><span class="lbl">${c.label}<kbd>${c.key}</kbd></span>`;
+  d.innerHTML = `<video muted playsinline preload="auto"></video><span class="lbl"><span data-i18n="cam_${c.id}"></span><kbd>${c.key}</kbd></span>`;
   d.onclick = () => { if (!stage.classList.contains("focus")) setLayout("focus", false); setMain(c.id); };
   d.ondblclick = () => toggleFullscreen();
   stage.appendChild(d);
@@ -218,17 +209,17 @@ stage.insertAdjacentHTML("beforeend", `
     <span id="hBlinkR" class="blink">▶</span>
     <svg id="hWheel" viewBox="-12 -12 24 24"><circle r="10" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M-10 0H10M0 0V10" stroke="currentColor" stroke-width="2.2"/></svg>
     <span id="hSteer">0°</span>
-    <div class="ped"><div class="bar"><i id="hAcc"></i></div>accél.</div>
-    <span id="hBrake" class="pill">FREIN</span>
+    <div class="ped"><div class="bar"><i id="hAcc"></i></div><span data-i18n="accel"></span></div>
+    <span id="hBrake" class="pill" data-i18n="brake"></span>
     <span id="hAp" class="pill">—</span>
   </div>
-  <div id="hudNone" hidden>Pas de télémétrie sur ce clip (véhicule à l'arrêt ou firmware ancien)</div>`);
+  <div id="hudNone" hidden data-i18n="hud_none"></div>`);
 let hudOn = (() => { try { return localStorage.getItem("tcv.hud") !== "0"; } catch { return true; } })();
 function setHud(on) {
   hudOn = on; $("#hudBtn").classList.toggle("on", on);
   try { localStorage.setItem("tcv.hud", on ? "1" : "0"); } catch {}
 }
-const AP = { 1:"FSD (supervisé)", 2:"Autosteer", 3:"Régulateur" };
+const apName = ap => (ap >= 1 && ap <= 3) ? t("ap" + ap) : null;
 function telAt(arr, t) {
   let lo = 0, hi = arr.length - 1;
   if (hi < 0) return null;
@@ -250,8 +241,8 @@ function updateHud(seg, t) {
   $("#hBrake").classList.toggle("on", d.brake);
   $("#hBlinkL").classList.toggle("on", d.blinkL);
   $("#hBlinkR").classList.toggle("on", d.blinkR);
-  $("#hAp").textContent = AP[d.ap] || "Manuel";
-  $("#hAp").classList.toggle("on", !!AP[d.ap]);
+  $("#hAp").textContent = apName(d.ap) || t("manual");
+  $("#hAp").classList.toggle("on", !!apName(d.ap));
 }
 async function loadTelemetry(seg) {
   if (seg.tel !== undefined) return;
@@ -325,7 +316,7 @@ function previewPath(ev) {
 }
 
 async function loadFolder(entries, label) {
-  $("#status").textContent = "Analyse…";
+  $("#status").textContent = t("st_scanning");
   events = buildEvents(entries);
   // Encrypted events whose keys are already cached on this PC are readable right away.
   const enc = events.filter(e => e.encrypted);
@@ -344,8 +335,9 @@ function updateStatus(label) {
   if (label) folderLabel = label;
   const enc = events.filter(e => e.encrypted).length;
   const locked = events.filter(e => e.encrypted && !e.metaUnlocked).length;
-  $("#status").textContent = `${folderLabel} — ${events.length} événements` +
-    (enc ? (locked ? ` · ${locked} chiffré${locked > 1 ? "s" : ""} 🔒 (connecte-toi à Tesla pour déverrouiller)` : ` · ${enc} chiffré${enc > 1 ? "s" : ""}, tout est déverrouillé 🔓`) : "");
+  const pl = n => (n > 1 ? "s" : "");
+  $("#status").textContent = t("st_events", { name: folderLabel, n: events.length }) +
+    (enc ? (locked ? t("st_locked", { n: locked, s: pl(locked) }) : t("st_unlocked", { n: enc, s: pl(enc) })) : "");
 }
 
 // After sign-in, fetch the key of one front clip per encrypted event (the one at the event
@@ -353,13 +345,13 @@ function updateStatus(label) {
 async function unlockPreviews() {
   const todo = events.filter(e => e.encrypted && !e.metaUnlocked);
   if (!todo.length) return makeThumbs();
-  $("#status").textContent = `Déverrouillage des aperçus de ${todo.length} événements…`;
+  $("#status").textContent = t("st_unlocking", { n: todo.length });
   const r = await window.api.unlock(todo.map(previewPath));
   if (r && !r.cancelled && !r.error) {
     const st = await window.api.keyStatus(todo.map(previewPath));
     todo.forEach((e, i) => { if (st[i]) e.metaUnlocked = true; });
     renderList(); makeThumbs();
-  } else if (r && r.error) toast("Tesla : " + r.error);
+  } else if (r && r.error) toast(t("tesla_err", { msg: errText(r) }));
   updateStatus();
 }
 // Thumbnail = a frame of the front camera at the event moment.
@@ -395,8 +387,8 @@ async function makeThumbs() {
 }
 
 // ---------- List ----------
-const fmtDay = d => d.toLocaleDateString("fr-FR", { weekday:"long", day:"numeric", month:"long", year:"numeric" });
-const fmtTime = d => d.toLocaleTimeString("fr-FR", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+const fmtDay = d => d.toLocaleDateString(locale(), { weekday:"long", day:"numeric", month:"long", year:"numeric" });
+const fmtTime = d => d.toLocaleTimeString(locale(), { hour:"2-digit", minute:"2-digit", second:"2-digit" });
 const fmtDur = s => { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 
 function renderList() {
@@ -411,8 +403,8 @@ function renderList() {
     el.className = "ev" + (locked ? " locked" : "") + (ev === cur ? " active" : "");
     const mins = Math.round((ev.segs[ev.segs.length - 1].offset + 60) / 60);
     el.innerHTML = `${placeholder(ev)}
-      <div><div class="t">${fmtTime(ev.start).slice(0, 5)} <span class="tag">${TYPES[ev.type]}</span><span class="tag">${mins} min</span>${ev.encrypted ? '<span class="tag" title="Clip chiffré">' + (locked ? "🔒" : "🔓") + "</span>" : ""}</div>
-      <div class="s" data-sub>${locked ? "Chiffré — clique pour déverrouiller" : ""}</div></div>`;
+      <div><div class="t">${fmtTime(ev.start).slice(0, 5)} <span class="tag">${typeName(ev.type)}</span><span class="tag">${mins} min</span>${ev.encrypted ? '<span class="tag" title="${t("enc_title")}">' + (locked ? "🔒" : "🔓") + "</span>" : ""}</div>
+      <div class="s" data-sub>${locked ? t("locked_sub") : ""}</div></div>`;
     el.onclick = () => openEvent(ev);
     ev.el = el;
     if (ev.meta) fillMeta(ev);
@@ -420,10 +412,18 @@ function renderList() {
     list.appendChild(el);
   }
 }
+// Errors from the main process come as codes so they can be shown in either language.
+function errText(r) {
+  if (r.error === "status") return t("err_status", { status: r.status });
+  if (r.error === "refused") return t("err_refused");
+  return r.message || r.error;
+}
+const whyText = w => (["unreadable", "nokey", "badkey"].includes(w) ? t("why_" + w) : w);
+
 function fillMeta(ev) {
   const sub = ev.el && ev.el.querySelector("[data-sub]");
   if (!sub || !ev.meta) return;
-  const r = REASONS[ev.meta.reason] || (ev.meta.reason || "").replace(/_/g, " ");
+  const r = reasonName(ev.meta.reason);
   sub.textContent = [ev.meta.city, r].filter(Boolean).join(" · ");
   sub.title = [ev.meta.street, ev.meta.city, r].filter(Boolean).join(" — ");
 }
@@ -478,12 +478,12 @@ async function openEvent(ev) {
     const paths = videoPaths(ev);
     const st = await window.api.keyStatus(paths);
     if (!st.every(Boolean)) {
-      toast("🔑 Récupération des clés auprès de Tesla…", 60000);
+      toast(t("fetching_keys"), 60000);
       const r = await window.api.unlock(paths);
-      if (!r || r.cancelled) { toast("Connexion Tesla annulée : ce clip reste chiffré."); return; }
-      if (r.error) { toast("Tesla : " + r.error); return; }
-      if (r.failed && r.failed.length) toast(`${r.failed.length} fichier(s) n'ont pas pu être déverrouillés (${r.failed[0][1]}).`);
-      else if (r.noEscrow) toast(`${r.noEscrow} vidéo(s) ne sont lisibles que dans la voiture.`);
+      if (!r || r.cancelled) { toast(t("clip_cancelled")); return; }
+      if (r.error) { toast(t("tesla_err", { msg: errText(r) })); return; }
+      if (r.failed && r.failed.length) toast(t("failed_n", { n: r.failed.length, why: whyText(r.failed[0][1]) }));
+      else if (r.noEscrow) toast(t("car_only", { n: r.noEscrow }));
       else hideToast();
     }
     ev.unlocked = true; ev.metaUnlocked = true;
@@ -496,8 +496,8 @@ async function openEvent(ev) {
   if (!ev.encrypted && ev.json && !ev.meta) { try { await readMeta(ev); fillMeta(ev); } catch {} }
   const eo = eventOffset(ev);
   const et = eventTime(ev);
-  $("#info").textContent = [TYPES[ev.type], ev.meta && ev.meta.street, ev.meta && ev.meta.city, ev.meta && (REASONS[ev.meta.reason] || ev.meta.reason),
-    et && `événement ${et.approx ? "≈ " : ""}${fmtTime(et.d)}`].filter(Boolean).join(" · ");
+  $("#info").textContent = [typeName(ev.type), ev.meta && ev.meta.street, ev.meta && ev.meta.city, ev.meta && reasonName(ev.meta.reason),
+    et && t("info_event", { approx: et.approx ? "≈ " : "", time: fmtTime(et.d) })].filter(Boolean).join(" · ");
   $("#toEvent").hidden = eo === null;
   // Sentry/Saved: start a few seconds before the trigger, like the car does.
   const startAt = eo !== null && ev.type !== "RecentClips" ? Math.max(0, eo - 10) : 0;
@@ -585,36 +585,37 @@ function updateMarker() {
   if (eo === null) { mk.style.display = "none"; return; }
   mk.style.display = "block";
   const et = eventTime(cur);
-  mk.querySelector(".flag").title = `Événement ${et.approx ? "≈ " : "à "}${fmtTime(et.d)} — clic pour y aller (E)`;
+  mk.querySelector(".flag").title = t(et.approx ? "flag_approx" : "flag_exact", { time: fmtTime(et.d) });
   mk.style.left = `calc(${(eo / total()) * 100}% - 1px)`;
 }
 
 // ---------- UI wiring ----------
 $("#pick").onclick = async () => {
-  $("#status").textContent = "Lecture du dossier…";
+  $("#status").textContent = t("st_reading");
   const r = await window.api.pickFolder();
   if (r) loadFolder(r.entries, r.name); else updateStatus();
 };
 
 // ---------- Tesla account ----------
 function showAuth(s) {
+  lastAuth = s;
   authed = s.connected;
-  $("#auth").textContent = s.connected ? "🟢 Tesla connecté" : s.windowOpen ? "⏳ Connexion…" : "🔑 Connexion Tesla";
+  $("#auth").textContent = t(s.connected ? "auth_on" : s.windowOpen ? "auth_wait" : "auth_off");
   $("#auth").classList.toggle("on", s.connected);
-  $("#authState").textContent = s.connected ? "Connecté : les clips chiffrés peuvent être déverrouillés." +
-      (s.expiresAt ? ` Session Tesla valide jusqu'à ${new Date(s.expiresAt).toLocaleString("fr-FR", { weekday:"short", hour:"2-digit", minute:"2-digit" })} (durée fixée par Tesla).` : "")
-    : "Non connecté. Les clips déjà déverrouillés restent lisibles hors connexion.";
+  $("#authState").textContent = s.connected
+    ? t("auth_state_on") + (s.expiresAt ? t("auth_exp", { when: new Date(s.expiresAt).toLocaleString(locale(), { weekday:"short", hour:"2-digit", minute:"2-digit" }) }) : "")
+    : t("auth_state_off");
 }
 window.api.onAuth(s => { const was = authed; showAuth(s); if (s.connected && !was && events.length) unlockPreviews(); });
 window.api.authStatus().then(showAuth);
 const dlg = $("#authDlg");
 $("#auth").onclick = () => dlg.showModal();
 $("#dlgClose").onclick = () => dlg.close();
-$("#dlgConnect").onclick = async () => { dlg.close(); const r = await window.api.connect(); if (!r.ok) toast("Connexion annulée."); };
-$("#dlgSignout").onclick = async () => { showAuth(await window.api.signOut()); toast("Déconnecté de Tesla (les clés déjà enregistrées restent)."); };
+$("#dlgConnect").onclick = async () => { dlg.close(); const r = await window.api.connect(); if (!r.ok) toast(t("signin_cancelled")); };
+$("#dlgSignout").onclick = async () => { showAuth(await window.api.signOut()); toast(t("signed_out")); };
 $("#dlgForget").onclick = async () => {
-  if (!confirm("Supprimer toutes les clés enregistrées sur ce PC ? Il faudra se reconnecter pour relire les clips chiffrés.")) return;
-  await window.api.forgetKeys(); toast("Clés supprimées."); dlg.close();
+  if (!confirm(t("confirm_forget"))) return;
+  await window.api.forgetKeys(); toast(t("keys_forgotten")); dlg.close();
 };
 $("#dlgTokenOk").onclick = async () => { showAuth(await window.api.manualToken($("#dlgToken").value)); $("#dlgToken").value = ""; dlg.close(); };
 for (const b of document.querySelectorAll(".filters button")) b.onclick = () => {
@@ -667,8 +668,31 @@ function toast(msg, ms = 4500) {
   clearTimeout(toast.h); toast.h = setTimeout(hideToast, ms);
 }
 function hideToast() { $("#toast").style.display = "none"; }
+// ---------- Language ----------
+let lastAuth = { connected: false };
+function refreshTexts() {
+  applyStaticText();
+  for (const el of stage.querySelectorAll(".cam")) el.dataset.missing = t("no_image");
+  $("#langSel").value = LANG;
+  showAuth(lastAuth);
+  if (events.length) { renderList(); updateStatus(); }
+  if (cur) {
+    const et = eventTime(cur);
+    $("#info").textContent = [typeName(cur.type), cur.meta && cur.meta.street, cur.meta && cur.meta.city, cur.meta && reasonName(cur.meta.reason),
+      et && t("info_event", { approx: et.approx ? "≈ " : "", time: fmtTime(et.d) })].filter(Boolean).join(" · ");
+    updateMarker();
+  }
+  window.api.setLang(LANG);
+}
+$("#langSel").onchange = e => {
+  LANG = e.target.value;
+  try { localStorage.setItem("tcv.lang", LANG); } catch {}
+  refreshTexts();
+};
+
 setLayout(prefLayout, false);
 setHud(hudOn);
+refreshTexts();
 </script>
 </body>
 </html>
