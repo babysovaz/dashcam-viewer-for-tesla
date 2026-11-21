@@ -8,7 +8,7 @@
   "scripts": {
     "start": "electron .",
     "test": "node test/container.test.js",
-    "package": "electron-packager . \"TeslaCam Viewer\" --platform=win32 --arch=x64 --out=dist --overwrite --asar --ignore=^/test --ignore=^/dist"
+    "package": "electron-packager . \"TeslaCam Viewer\" --platform=win32 --arch=x64 --out=dist --overwrite --asar --ignore=^/test --ignore=^/dist --ignore=^/scripts --ignore=^/\\.github --ignore=^/samples"
   },
   "devDependencies": {
     "@electron/packager": "^18.3.6",

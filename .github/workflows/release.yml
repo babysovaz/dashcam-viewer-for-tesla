@@ -1,0 +1,75 @@
+# Builds the Windows app on a real Windows machine and attaches it to a GitHub release.
+#
+# Triggers:
+#  - you publish a release on github.com (e.g. tag v0.4.0) → the app is built and attached;
+#    if the release description is empty, the bilingual notes from CHANGELOG.md are used.
+#  - manual run (Actions tab → "Build & attach release" → Run workflow) for an existing tag,
+#    e.g. to attach the app to a release created by hand.
+name: Build & attach release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag (e.g. v0.3.0)"
+        required: true
+
+permissions:
+  contents: write   # needed to upload the asset and edit the release notes
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Offline tests (decryption & telemetry parsers)
+        shell: bash
+        # They need sample clips that are not in the repo: skipped when absent.
+        run: if [ -d samples/TeslaCam ]; then npm test; else echo "No samples/ folder - skipping"; fi
+
+      - name: Set app version from tag
+        shell: bash
+        run: npm version "${TAG#v}" --no-git-tag-version --allow-same-version
+
+      - name: Package
+        run: npm run package
+
+      - name: Zip
+        shell: pwsh
+        run: |
+          $ver = $env:TAG.TrimStart('v')
+          $zip = "TeslaCam-Viewer-$ver-win64.zip"
+          Compress-Archive -Path "dist/TeslaCam Viewer-win32-x64" -DestinationPath $zip
+          (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower() + "  " + $zip | Out-File "$zip.sha256" -Encoding ascii
+          "ZIP=$zip" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Attach to release
+        shell: bash
+        run: gh release upload "$TAG" "$ZIP" "$ZIP.sha256" --clobber
+
+      - name: Bilingual release notes from CHANGELOG.md (only if the description is empty)
+        shell: bash
+        run: |
+          body="$(gh release view "$TAG" --json body --jq .body)"
+          if [ -z "${body//[[:space:]]/}" ]; then
+            node scripts/release-notes.js "${TAG#v}" > notes.md
+            gh release edit "$TAG" --notes-file notes.md
+          else
+            echo "Release already has a description - left untouched."
+          fi

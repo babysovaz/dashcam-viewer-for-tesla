@@ -1,46 +1,58 @@
 # TeslaCam Viewer
 
-Lecteur Windows pour les clips **Dashcam / Sentinelle** enregistrés par une Tesla sur clé USB : les 6 caméras synchronisées, comme dans la voiture, y compris les **clips chiffrés** (logiciel Tesla 2026.20+).
+🇬🇧 **English** · 🇫🇷 [Français](README.fr.md)
 
-> Projet personnel, **non affilié à Tesla, Inc.** « Tesla », « TeslaCam » et « Sentry Mode » sont des marques de Tesla, Inc.
+A Windows player for the **Dashcam / Sentry Mode** clips a Tesla records on its USB drive: all 6 cameras in sync, just like in the car — including **encrypted clips** (Tesla software 2026.20+).
 
-## Fonctionnalités
+> Personal project, **not affiliated with Tesla, Inc.** "Tesla", "TeslaCam" and "Sentry Mode" are trademarks of Tesla, Inc.
 
-- **6 caméras synchronisées** (avant, arrière, montants, répétiteurs), plusieurs dispositions : *comme dans la voiture*, *avant + arrière*, *une caméra en grand*, *grille 3×2*.
-- **Clips chiffrés** : déchiffrement **local et à la volée** (seul ce qui est regardé est déchiffré, rien n'est écrit en clair sur le disque).
-- **Télémétrie** embarquée par Tesla dans la vidéo : vitesse, rapport, angle du volant, accélérateur, frein, clignotants, Autosteer / FSD.
-- **Repère de l'événement** sur la timeline, vignettes, filtres Enregistrés / Sentinelle / Récents, raccourcis clavier.
+## Features
 
-## Confidentialité
+- **6 synchronized cameras** (front, rear, pillars, repeaters) with several layouts: *like in the car*, *front + rear*, *one large camera*, *3×2 grid*.
+- **Encrypted clips**: **local, on-the-fly** decryption — only what you watch gets decrypted, nothing is ever written to disk in clear.
+- **Telemetry** that Tesla embeds in the video: speed, gear, steering angle, accelerator, brake, turn signals, Autosteer / FSD.
+- **Event marker** on the timeline, thumbnails, Saved / Sentry / Recent filters, keyboard shortcuts.
 
-- Les vidéos **ne quittent jamais le PC**.
-- Pour un clip chiffré, seules ses **métadonnées de clé** (en-tête de ~200 octets) sont envoyées à `dashcam.tesla.com`, qui renvoie la clé du clip — exactement ce que fait le lecteur officiel de Tesla.
-- La connexion se fait sur la **vraie page Tesla**, dans une fenêtre de l'appli : le mot de passe ne va qu'à Tesla. Le jeton de session reste en mémoire.
-- Les clés reçues sont conservées **chiffrées par Windows (DPAPI)** : un clip déverrouillé une fois se relit hors connexion.
+## Privacy
 
-## Limites connues
+- Videos **never leave your PC**.
+- For an encrypted clip, only its **key metadata** (a ~200-byte header) is sent to `dashcam.tesla.com`, which returns that clip's key — exactly what Tesla's own web viewer does.
+- You sign in on the **real Tesla page**, inside an app window: your password only goes to Tesla. The session token stays in memory.
+- Received keys are stored **encrypted by Windows (DPAPI)**: a clip unlocked once replays offline.
 
-- Le déchiffrement repose sur l'**API non documentée** du lecteur web de Tesla : une évolution côté Tesla peut le casser.
-- Dans `EncryptedClips`, `event.json` et `thumb.png` ne contiennent pas de métadonnées de clé : seule la voiture peut les lire. Le moment de l'événement est alors déduit du nom du dossier (≈ quelques secondes près) et la vignette est prise dans la vidéo.
-- La télémétrie n'existe que sur les clips récents (logiciel 2025.44.25+, HW3+) et pas quand la voiture est garée.
-- L'exécutable n'est pas signé : Windows SmartScreen demande une confirmation au premier lancement.
+## Known limitations
 
-## Utilisation
+- Decryption relies on the **undocumented API** of Tesla's web viewer: a change on Tesla's side may break it.
+- In `EncryptedClips`, `event.json` and `thumb.png` carry no key metadata: only the car can read them. The event moment is then derived from the folder name (within a few seconds) and the thumbnail is taken from the video.
+- Telemetry only exists on recent clips (software 2025.44.25+, HW3+) and not while the car is parked.
+- The executable is unsigned: Windows SmartScreen asks for confirmation on first launch.
+
+## Install
+
+Download the zip from the [latest release](../../releases/latest), extract it and run `TeslaCam Viewer.exe`.
+
+## Development
 
 ```bash
 npm install
-npm start          # lancer en développement
-npm run package    # construire l'application Windows (dist/)
-npm test           # tests du déchiffrement (TCV_SAMPLES=chemin/vers/TeslaCam)
+npm start          # run in development
+npm run package    # build the Windows app (dist/)
+npm test           # decryption tests (TCV_SAMPLES=path/to/TeslaCam)
 ```
 
-Raccourcis : `Espace` lecture · `←/→` ±5 s (`Maj` ±1 s) · `1`–`6` caméra · `G` disposition · `T` télémétrie · `E` événement · `↑/↓` événement précédent/suivant · `F` plein écran · `Échap` vue par défaut.
+Shortcuts: `Space` play · `←/→` ±5 s (`Shift` ±1 s) · `1`–`6` camera · `G` layout · `T` telemetry · `E` event · `↑/↓` previous/next event · `F` full screen · `Esc` default layout.
 
-## Crédits
+## Releasing
 
-- Format du conteneur chiffré et de l'appel de clés : travaux de rétro-ingénierie publiés par [steiner-dominik/tesla-dashcam-decrypt](https://github.com/steiner-dominik/tesla-dashcam-decrypt), [crstian19/tesla-dashcam-decrypt-go](https://github.com/crstian19/tesla-dashcam-decrypt-go) et [pieczorx/tesla-manager](https://github.com/pieczorx/tesla-manager).
-- Format de la télémétrie : [`dashcam.proto`](https://github.com/teslamotors/dashcam) publié par Tesla.
+1. Add the version's section to [CHANGELOG.md](CHANGELOG.md) (French + English) and push.
+2. On GitHub: *Releases → Draft a new release*, new tag (e.g. `v0.4.0`), leave the description empty, *Publish*.
+3. GitHub Actions builds the app on Windows, attaches it to the release and fills the description from the CHANGELOG.
 
-## Licence
+## Credits
 
-MIT — voir [LICENSE](LICENSE).
+- Encrypted container format and key request: reverse-engineering work published by [steiner-dominik/tesla-dashcam-decrypt](https://github.com/steiner-dominik/tesla-dashcam-decrypt), [crstian19/tesla-dashcam-decrypt-go](https://github.com/crstian19/tesla-dashcam-decrypt-go) and [pieczorx/tesla-manager](https://github.com/pieczorx/tesla-manager).
+- Telemetry format: [`dashcam.proto`](https://github.com/teslamotors/dashcam) published by Tesla.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
