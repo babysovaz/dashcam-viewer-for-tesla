@@ -5,7 +5,8 @@ const fs = require("fs");
 const path = require("path");
 
 const version = process.argv[2];
-const log = fs.readFileSync(path.join(__dirname, "..", "CHANGELOG.md"), "utf8");
+// Normalise line endings: on the Windows runner, Git checks files out with CRLF.
+const log = fs.readFileSync(path.join(__dirname, "..", "CHANGELOG.md"), "utf8").replace(/\r\n/g, "\n");
 const start = log.search(new RegExp(`^## \\[${version.replace(/\./g, "\\.")}\\]`, "m"));
 let section = "";
 if (start >= 0) {
