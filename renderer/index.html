@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' tcam:; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src tcam: data:; media-src tcam:; connect-src tcam:">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TeslaCam Viewer</title>
+<style>
+  :root { --bg:#0e0f11; --panel:#16181c; --line:#26292f; --txt:#e8e9eb; --dim:#8b9099; --acc:#e82127; --sel:#1f2329; }
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--txt); font:14px/1.4 "Segoe UI",system-ui,sans-serif; }
+  body { display:grid; grid-template-rows:auto 1fr; }
+  header { display:flex; gap:12px; align-items:center; padding:10px 16px; border-bottom:1px solid var(--line); background:var(--panel); }
+  header h1 { font-size:15px; margin:0 8px 0 0; letter-spacing:.5px; }
+  header h1 b { color:var(--acc); }
+  button, select { background:#22252b; color:var(--txt); border:1px solid #33373e; border-radius:6px; padding:6px 12px; font:inherit; cursor:pointer; }
+  button:hover, select:hover { background:#2b2f36; }
+  button.primary { background:var(--acc); border-color:var(--acc); font-weight:600; }
+  #status { color:var(--dim); font-size:13px; }
+  main { display:grid; grid-template-columns:300px 1fr; min-height:0; }
+  aside { border-right:1px solid var(--line); overflow:auto; background:var(--panel); }
+  .filters { position:sticky; top:0; display:flex; gap:4px; padding:8px; background:var(--panel); border-bottom:1px solid var(--line); z-index:1; }
+  .filters button { flex:1; padding:4px 6px; font-size:12px; }
+  .filters button.on { background:var(--sel); border-color:var(--acc); }
+  .day { padding:10px 12px 4px; color:var(--dim); font-size:12px; text-transform:uppercase; letter-spacing:.6px; }
+  .ev { display:grid; grid-template-columns:72px 1fr; gap:10px; padding:8px 12px; cursor:pointer; border-left:3px solid transparent; }
+  .ev:hover { background:#1b1e23; }
+  .ev.active { background:var(--sel); border-left-color:var(--acc); }
+  .ev img, .ev .noimg { width:72px; height:46px; object-fit:cover; border-radius:4px; background:#24272d; display:flex; align-items:center; justify-content:center; font-size:18px; }
+  .ev .t { font-weight:600; }
+  .ev .s { color:var(--dim); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ev.locked { opacity:.55; }
+  .tag { font-size:10px; padding:1px 5px; border-radius:3px; background:#2a2e35; color:var(--dim); margin-left:4px; }
+  #player { display:grid; grid-template-rows:1fr auto; min-height:0; min-width:0; }
+  #empty { display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px; color:var(--dim); text-align:center; padding:40px; }
+  #empty .big { font-size:42px; }
+  #stage { display:grid; gap:4px; padding:4px; min-height:0; background:#000; position:relative; }
+  #stage.grid { grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(2,1fr); grid-template-areas:"lp f rp" "lr b rr"; }
+  #stage.car  { grid-template-columns:1fr 1.7fr 1fr; grid-template-rows:1.3fr 1fr; grid-template-areas:"lp f rp" "lr b rr"; }
+  #stage.fb   { grid-template-columns:repeat(4,1fr); grid-template-rows:1fr 26%; grid-template-areas:"f f b b" "lp lr rr rp"; }
+  #stage:not(.focus) [data-cam=front]{grid-area:f} #stage:not(.focus) [data-cam=back]{grid-area:b}
+  #stage:not(.focus) [data-cam=left_pillar]{grid-area:lp} #stage:not(.focus) [data-cam=right_pillar]{grid-area:rp}
+  #stage:not(.focus) [data-cam=left_repeater]{grid-area:lr} #stage:not(.focus) [data-cam=right_repeater]{grid-area:rr}
+  #hud { position:absolute; top:10px; left:50%; transform:translateX(-50%); z-index:3; pointer-events:none; display:flex; align-items:center; gap:14px;
+         background:rgba(10,11,13,.72); backdrop-filter:blur(4px); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:8px 16px; }
+  #hudBtn.on { border-color:var(--acc); }
+  #hud .gear span { font-weight:700; color:#555; margin:0 2px; font-size:14px; } #hud .gear span.on { color:#fff; }
+  #hud .spd { text-align:center; line-height:1; } #hud .spd b { font-size:30px; font-variant-numeric:tabular-nums; display:block; } #hud .spd small { color:var(--dim); font-size:10px; }
+  #hWheel { width:30px; height:30px; color:#ddd; transition:transform .08s linear; } #hSteer { color:var(--dim); font-size:11px; min-width:34px; font-variant-numeric:tabular-nums; }
+  #hud .ped { display:flex; flex-direction:column; align-items:center; gap:2px; font-size:9px; color:var(--dim); }
+  #hud .bar { width:10px; height:30px; background:#2a2d33; border-radius:3px; position:relative; overflow:hidden; } #hud .bar i { position:absolute; bottom:0; left:0; right:0; background:#3fb950; }
+  #hud .pill { font-size:11px; font-weight:700; padding:3px 7px; border-radius:6px; background:#2a2d33; color:#555; }
+  #hBrake.on { background:#c62828; color:#fff; } #hAp.on { background:#1565c0; color:#fff; }
+  #hud .blink { font-size:18px; color:#333; } #hud .blink.on { color:#3fb950; animation:blk .7s steps(1) infinite; }
+  @keyframes blk { 50% { opacity:.15; } }
+  #hudNone { position:absolute; top:10px; left:50%; transform:translateX(-50%); z-index:3; pointer-events:none; font-size:11px; color:var(--dim); background:rgba(10,11,13,.7); padding:4px 10px; border-radius:8px; }
+  .ev .noimg.unl { font-size:20px; }
+  #stage.focus { grid-template-columns:repeat(5,1fr); grid-template-rows:1fr 18%; }
+  #stage.focus .cam.main { grid-column:1 / -1; grid-row:1; }
+  #stage.focus .cam:not(.main) { grid-row:2; }
+  .cam { position:relative; min-height:0; min-width:0; background:#000; cursor:pointer; overflow:hidden; border-radius:3px; outline:2px solid transparent; }
+  .cam.main { outline-color:var(--acc); }
+  .cam video { width:100%; height:100%; object-fit:contain; display:block; }
+  .cam .lbl { position:absolute; left:6px; top:4px; font-size:11px; padding:1px 6px; background:rgba(0,0,0,.6); border-radius:3px; pointer-events:none; }
+  .cam .lbl kbd { color:var(--dim); font:inherit; margin-left:4px; }
+  .cam.missing::after { content:"pas d'image"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#555; font-size:12px; }
+  #bar { padding:8px 14px 10px; border-top:1px solid var(--line); background:var(--panel); }
+  #tl { position:relative; height:24px; margin-top:12px; }
+  #tl input { width:100%; margin:0; position:absolute; top:4px; accent-color:var(--acc); }
+  #mark { position:absolute; top:2px; width:3px; height:20px; background:#ffcc00; border-radius:2px; display:none; z-index:2; pointer-events:none; }
+  #mark .flag { position:absolute; top:-16px; left:-3px; color:#ffcc00; font-size:14px; pointer-events:auto; cursor:pointer; }
+  #row { display:flex; align-items:center; gap:10px; margin-top:6px; flex-wrap:wrap; }
+  #clock { font-variant-numeric:tabular-nums; font-size:15px; font-weight:600; min-width:80px; }
+  #rel { color:var(--dim); font-variant-numeric:tabular-nums; }
+  #info { margin-left:auto; color:var(--dim); font-size:12px; text-align:right; }
+  #help { color:var(--dim); font-size:11px; margin-top:6px; }
+  #help kbd { background:#24272d; border:1px solid #33373e; border-radius:3px; padding:0 4px; font:11px/1.5 Consolas,monospace; }
+  dialog { background:var(--panel); color:var(--txt); border:1px solid #3a3f47; border-radius:10px; padding:18px 20px; }
+  dialog::backdrop { background:rgba(0,0,0,.6); }
+  #auth.on { border-color:#2e7d32; }
+  #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#2b2f36; padding:10px 16px; border-radius:8px; border:1px solid #3a3f47; display:none; max-width:560px; z-index:9; }
+</style>
+</head>
+<body>
+<header>
+  <h1><b>T</b> TeslaCam Viewer</h1>
+  <button class="primary" id="pick">📂 Ouvrir le dossier TeslaCam</button>
+  <span id="status">Sélectionne le dossier TeslaCam (ex. D:\TeslaCam). Les vidéos ne quittent jamais ce PC.</span>
+  <button id="auth" style="margin-left:auto">🔑 Connexion Tesla</button>
+</header>
+<main>
+  <aside>
+    <div class="filters">
+      <button data-f="all" class="on">Tout</button>
+      <button data-f="SavedClips">Enregistrés</button>
+      <button data-f="SentryClips">Sentinelle</button>
+      <button data-f="RecentClips">Récents</button>
+    </div>
+    <div id="list"></div>
+  </aside>
+  <section id="player">
+    <div id="empty"><div class="big">🎥</div><div>Ouvre ton dossier TeslaCam puis choisis un événement à gauche.</div></div>
+    <div id="stage" class="car" hidden></div>
+    <div id="bar" hidden>
+      <div id="tl"><input type="range" id="seek" min="0" max="60" step="0.05" value="0"><div id="mark"><span class="flag" title="Moment de l'événement">⚑</span></div></div>
+      <div id="row">
+        <button id="prevEv" title="Événement précédent (↑)">⏮</button>
+        <button id="play" title="Lecture / pause (Espace)">▶</button>
+        <button id="nextEv" title="Événement suivant (↓)">⏭</button>
+        <span id="clock">--:--:--</span><span id="rel">0:00 / 0:00</span>
+        <select id="rate" title="Vitesse (+ / -)"><option>0.25</option><option>0.5</option><option selected>1</option><option>2</option><option>4</option></select>
+        <select id="layoutSel" title="Disposition (G pour changer, Échap pour revenir)">
+          <option value="car">🚗 Comme dans la voiture</option><option value="fb">Avant + Arrière en grand</option>
+          <option value="focus">Une caméra en grand</option><option value="grid">Grille 3×2</option></select>
+        <button id="hudBtn" title="Télémétrie : vitesse, pédales, volant… (T)">📊 Télémétrie</button>
+        <button id="toEvent" title="Aller au moment de l'événement (E)">⚑ Événement</button>
+        <span id="info"></span>
+      </div>
+      <div id="help"><kbd>Espace</kbd> lecture · <kbd>←</kbd><kbd>→</kbd> ±5 s · <kbd>Maj</kbd>+<kbd>←</kbd><kbd>→</kbd> ±1 s · <kbd>1</kbd>–<kbd>6</kbd> caméra · <kbd>G</kbd> disposition · <kbd>T</kbd> télémétrie · <kbd>Échap</kbd> vue par défaut · <kbd>E</kbd> événement · <kbd>↑</kbd><kbd>↓</kbd> événement préc./suiv. · <kbd>F</kbd> plein écran · clic = caméra principale</div>
+    </div>
+  </section>
+</main>
+<div id="toast"></div>
+<dialog id="authDlg">
+  <h3 style="margin-top:0">Compte Tesla</h3>
+  <p id="authState" style="color:var(--dim)"></p>
+  <p style="color:var(--dim);font-size:12px;max-width:460px">La connexion se fait sur la vraie page dashcam.tesla.com : ton mot de passe ne va qu'à Tesla.
+  Seules les petites métadonnées de clé de chaque clip sont envoyées à Tesla, jamais la vidéo. Les clés reçues sont gardées
+  chiffrées sur ce PC (protection Windows) : un clip déverrouillé une fois se relit ensuite sans connexion.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button id="dlgConnect" class="primary">Se connecter</button>
+    <button id="dlgSignout">Se déconnecter</button>
+    <button id="dlgForget">Oublier les clés enregistrées</button>
+    <button id="dlgClose" style="margin-left:auto">Fermer</button>
+  </div>
+  <details style="margin-top:12px"><summary style="cursor:pointer;color:var(--dim);font-size:12px">Secours : coller un jeton manuellement</summary>
+    <p style="color:var(--dim);font-size:12px">Sur dashcam.tesla.com dans Edge : F12 → Réseau → glisse un clip → requête /api/1/… → copie la valeur « Authorization ».</p>
+    <input id="dlgToken" type="password" placeholder="Bearer eyJ…" style="width:100%;padding:6px;background:#111;color:#eee;border:1px solid #333;border-radius:4px">
+    <button id="dlgTokenOk" style="margin-top:6px">Utiliser ce jeton</button>
+  </details>
+</dialog>
+<script>
+"use strict";
+// Display order in grid mode mirrors the car's viewer: pillars/front on top, repeaters/back below.
+const CAMS = [
+  { id:"left_pillar",    label:"Montant G",    key:"5" },
+  { id:"front",          label:"Avant",        key:"1" },
+  { id:"right_pillar",   label:"Montant D",    key:"6" },
+  { id:"left_repeater",  label:"Répétiteur G", key:"3" },
+  { id:"back",           label:"Arrière",      key:"2" },
+  { id:"right_repeater", label:"Répétiteur D", key:"4" },
+];
+const TYPES = { SavedClips:"Enregistré", SentryClips:"Sentinelle", RecentClips:"Récent" };
+const REASONS = {
+  user_interaction_dashcam_multifunction_selected:"Enregistré (molette)",
+  user_interaction_dashcam_icon_tapped:"Enregistré (écran)",
+  user_interaction_dashcam_panel_save:"Enregistré (écran)",
+  user_interaction_honk:"Enregistré (klaxon)",
+  user_interaction_dashcam_launcher_action_tapped:"Enregistré (écran)",
+  sentry_aware_object_detection:"Sentinelle : mouvement",
+  sentry_aware_accel:"Sentinelle : choc détecté",
+  sentry_locked_handle_pulled:"Sentinelle : poignée tirée",
+  vehicle_auto_emergency_braking:"Freinage d'urgence",
+};
+// Segment file name: 2026-04-17_15-08-49-front.mp4
+const RX = /^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})-(front|back|left_repeater|right_repeater|left_pillar|right_pillar)\.mp4$/;
+const $ = s => document.querySelector(s);
+
+let events = [], filter = "all", cur = null, segIdx = -1, mainCam = "front";
+let playing = false, rate = 1, loadToken = 0, seeking = false;
+const vids = {};      // cam id -> <video>
+const urls = {};      // cam id -> current object URL
+
+// ---------- Stage ----------
+const stage = $("#stage");
+for (const c of CAMS) {
+  const d = document.createElement("div");
+  d.className = "cam"; d.dataset.cam = c.id;
+  d.innerHTML = `<video muted playsinline preload="auto"></video><span class="lbl">${c.label}<kbd>${c.key}</kbd></span>`;
+  d.onclick = () => { if (!stage.classList.contains("focus")) setLayout("focus", false); setMain(c.id); };
+  d.ondblclick = () => toggleFullscreen();
+  stage.appendChild(d);
+  const v = d.querySelector("video");
+  vids[c.id] = v;
+  v.addEventListener("ended", () => { if (c.id === masterId()) nextSegment(); });
+}
+
+function masterId() {
+  if (urls[mainCam]) return mainCam;
+  for (const c of ["front", ...CAMS.map(x => x.id)]) if (urls[c]) return c;
+  return mainCam;
+}
+function setMain(id) {
+  mainCam = id;
+  for (const el of stage.children) el.classList.toggle("main", el.dataset.cam === id);
+  // In focus layout the main camera gets the big slot; keep the others in the strip in car order.
+  let o = 1;
+  for (const c of CAMS) stage.querySelector(`[data-cam="${c.id}"]`).style.order = stage.classList.contains("focus") ? (c.id === id ? 0 : o++) : "";
+}
+const LAYOUTS = ["car", "fb", "focus", "grid"];
+let prefLayout = (() => { try { return localStorage.getItem("tcv.layout") || "car"; } catch { return "car"; } })();
+if (!LAYOUTS.includes(prefLayout)) prefLayout = "car";
+function setLayout(l, remember = true) {
+  stage.className = l;
+  $("#layoutSel").value = l;
+  if (remember) { prefLayout = l; try { localStorage.setItem("tcv.layout", l); } catch {} }
+  if (l === "fb" && mainCam !== "back") mainCam = "front";
+  setMain(mainCam);
+}
+
+// ---------- Telemetry HUD ----------
+stage.insertAdjacentHTML("beforeend", `
+  <div id="hud" hidden>
+    <div class="gear"><span data-g="0">P</span><span data-g="2">R</span><span data-g="3">N</span><span data-g="1">D</span></div>
+    <span id="hBlinkL" class="blink">◀</span>
+    <div class="spd"><b id="hSpeed">0</b><small>km/h</small></div>
+    <span id="hBlinkR" class="blink">▶</span>
+    <svg id="hWheel" viewBox="-12 -12 24 24"><circle r="10" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M-10 0H10M0 0V10" stroke="currentColor" stroke-width="2.2"/></svg>
+    <span id="hSteer">0°</span>
+    <div class="ped"><div class="bar"><i id="hAcc"></i></div>accél.</div>
+    <span id="hBrake" class="pill">FREIN</span>
+    <span id="hAp" class="pill">—</span>
+  </div>
+  <div id="hudNone" hidden>Pas de télémétrie sur ce clip (véhicule à l'arrêt ou firmware ancien)</div>`);
+let hudOn = (() => { try { return localStorage.getItem("tcv.hud") !== "0"; } catch { return true; } })();
+function setHud(on) {
+  hudOn = on; $("#hudBtn").classList.toggle("on", on);
+  try { localStorage.setItem("tcv.hud", on ? "1" : "0"); } catch {}
+}
+const AP = { 1:"FSD (supervisé)", 2:"Autosteer", 3:"Régulateur" };
+function telAt(arr, t) {
+  let lo = 0, hi = arr.length - 1;
+  if (hi < 0) return null;
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (arr[m].t <= t) lo = m; else hi = m - 1; }
+  return arr[lo];
+}
+function updateHud(seg, t) {
+  const hud = $("#hud"), none = $("#hudNone");
+  if (!hudOn || !seg) { hud.hidden = true; none.hidden = true; return; }
+  const d = seg.tel ? telAt(seg.tel, t) : null;
+  hud.hidden = !d;
+  none.hidden = !!d || !Array.isArray(seg.tel);       // hide while still loading
+  if (!d) return;
+  $("#hSpeed").textContent = Math.round(Math.abs(d.speed) * 3.6);
+  for (const g of hud.querySelectorAll(".gear span")) g.classList.toggle("on", +g.dataset.g === d.gear);
+  $("#hWheel").style.transform = `rotate(${d.steer}deg)`;
+  $("#hSteer").textContent = `${Math.round(d.steer)}°`;
+  $("#hAcc").style.height = `${Math.max(0, Math.min(100, d.accel * seg.accScale))}%`;
+  $("#hBrake").classList.toggle("on", d.brake);
+  $("#hBlinkL").classList.toggle("on", d.blinkL);
+  $("#hBlinkR").classList.toggle("on", d.blinkR);
+  $("#hAp").textContent = AP[d.ap] || "Manuel";
+  $("#hAp").classList.toggle("on", !!AP[d.ap]);
+}
+async function loadTelemetry(seg) {
+  if (seg.tel !== undefined) return;
+  seg.tel = null;                                      // loading
+  const p = seg.files.front || Object.values(seg.files)[0];
+  const d = await window.api.telemetry(p);
+  seg.tel = d || [];
+  // Pedal position may come as 0–1 or 0–100 depending on firmware: scale to percent.
+  const max = seg.tel.reduce((m, x) => Math.max(m, x.accel), 0);
+  seg.accScale = max > 1.5 ? 1 : 100;
+}
+
+// ---------- Scan ----------
+// Files are served by the app through tcam:// — encrypted ones are decrypted on the fly.
+const url = abs => "tcam://f/?p=" + encodeURIComponent(abs);
+let authed = false;
+
+function buildEvents(entries) {
+  const map = new Map();
+  for (const e of entries) {
+    let p = e.parts.slice();
+    if (p[0] && !TYPES[p[0]] && p.some(x => TYPES[x])) p = p.slice(p.findIndex(x => TYPES[x]) - (p.includes("EncryptedClips") ? 1 : 0));
+    const encrypted = p[0] === "EncryptedClips";
+    if (encrypted) p = p.slice(1);
+    const type = p[0];
+    if (!TYPES[type]) continue;
+    const name = p[p.length - 1];
+    const folder = p.length >= 3 ? p[1] : null;            // event folder (Saved/Sentry); RecentClips is flat
+    const key = (encrypted ? "E|" : "C|") + type + "|" + (folder || "");
+    if (!map.has(key)) map.set(key, { type, folder, encrypted, segs:new Map(), json:null, thumb:null });
+    const ev = map.get(key);
+    const m = name.match(RX);
+    if (m) {
+      const ts = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`;
+      if (!ev.segs.has(ts)) ev.segs.set(ts, { ts, start:new Date(ts), files:{} });
+      ev.segs.get(ts).files[m[7]] = e.abs;
+    } else if (name === "event.json") ev.json = e.abs;
+    else if (name === "thumb.png") ev.thumb = e.abs;
+  }
+  const out = [];
+  for (const ev of map.values()) {
+    const segs = [...ev.segs.values()].sort((a, b) => a.start - b.start);
+    if (!segs.length) continue;
+    if (ev.type === "RecentClips") {
+      // Flat folder: split into drives wherever recording stopped for more than 2 minutes.
+      let group = [];
+      for (const s of segs) {
+        if (group.length && s.start - group[group.length - 1].start > 120000) { out.push(mkEvent(ev, group)); group = []; }
+        group.push(s);
+      }
+      if (group.length) out.push(mkEvent(ev, group));
+    } else out.push(mkEvent(ev, segs));
+  }
+  return out.sort((a, b) => b.start - a.start);
+}
+function mkEvent(ev, segs) {
+  const start = segs[0].start;
+  for (const s of segs) { s.offset = (s.start - start) / 1000; s.dur = 60; }
+  return { ...ev, segs, start, meta:null, unlocked: !ev.encrypted };
+}
+
+// In EncryptedClips, event.json and thumb.png carry no key escrow: Tesla only lets the car
+// read them. So for encrypted events the moment comes from the folder name and the
+// thumbnail is grabbed from the video itself.
+const videoPaths = ev => ev.segs.flatMap(s => Object.values(s.files));
+function segIndexAt(ev, g) { let i = 0; ev.segs.forEach((s, k) => { if (s.offset <= g + 0.01) i = k; }); return i; }
+function previewPath(ev) {
+  const eo = eventOffset(ev);
+  const f = ev.segs[eo === null ? ev.segs.length - 1 : segIndexAt(ev, eo)].files;
+  return f.front || Object.values(f)[0];
+}
+
+async function loadFolder(entries, label) {
+  $("#status").textContent = "Analyse…";
+  events = buildEvents(entries);
+  // Encrypted events whose keys are already cached on this PC are readable right away.
+  const enc = events.filter(e => e.encrypted);
+  if (enc.length) {
+    const firsts = enc.map(previewPath);
+    const st = await window.api.keyStatus(firsts);
+    enc.forEach((e, i) => { if (st[i]) e.metaUnlocked = true; });
+  }
+  updateStatus(label);
+  renderList();
+  loadMetaProgressively().then(makeThumbs);
+  if (authed) unlockPreviews();
+}
+let folderLabel = "";
+function updateStatus(label) {
+  if (label) folderLabel = label;
+  const enc = events.filter(e => e.encrypted).length;
+  const locked = events.filter(e => e.encrypted && !e.metaUnlocked).length;
+  $("#status").textContent = `${folderLabel} — ${events.length} événements` +
+    (enc ? (locked ? ` · ${locked} chiffré${locked > 1 ? "s" : ""} 🔒 (connecte-toi à Tesla pour déverrouiller)` : ` · ${enc} chiffré${enc > 1 ? "s" : ""}, tout est déverrouillé 🔓`) : "");
+}
+
+// After sign-in, fetch the key of one front clip per encrypted event (the one at the event
+// moment) to build thumbnails. The other cameras are unlocked when the event is opened.
+async function unlockPreviews() {
+  const todo = events.filter(e => e.encrypted && !e.metaUnlocked);
+  if (!todo.length) return makeThumbs();
+  $("#status").textContent = `Déverrouillage des aperçus de ${todo.length} événements…`;
+  const r = await window.api.unlock(todo.map(previewPath));
+  if (r && !r.cancelled && !r.error) {
+    const st = await window.api.keyStatus(todo.map(previewPath));
+    todo.forEach((e, i) => { if (st[i]) e.metaUnlocked = true; });
+    renderList(); makeThumbs();
+  } else if (r && r.error) toast("Tesla : " + r.error);
+  updateStatus();
+}
+// Thumbnail = a frame of the front camera at the event moment.
+function grabFrame(src, t) {
+  return new Promise(res => {
+    const v = document.createElement("video");
+    v.muted = true; v.crossOrigin = "anonymous"; v.preload = "auto";
+    let done = false;
+    const fin = x => { if (done) return; done = true; clearTimeout(to); v.removeAttribute("src"); v.load(); res(x); };
+    const to = setTimeout(() => fin(null), 12000);
+    v.onloadedmetadata = () => { v.currentTime = Math.max(0, Math.min(t, (v.duration || t) - 0.2)); };
+    v.onseeked = () => {
+      try { const c = document.createElement("canvas"); c.width = 144; c.height = 92; c.getContext("2d").drawImage(v, 0, 0, 144, 92); fin(c.toDataURL("image/jpeg", 0.75)); }
+      catch { fin(null); }
+    };
+    v.onerror = () => fin(null);
+    v.src = src;
+  });
+}
+async function makeThumbs() {
+  if (makeThumbs.busy) return;
+  makeThumbs.busy = true;
+  try {
+    for (const ev of events) {
+      if (ev.thumbUrl || ev.thumbFailed || (!ev.encrypted && ev.thumb)) continue;
+      if (ev.encrypted && !ev.metaUnlocked && !ev.unlocked) continue;
+      const eo = eventOffset(ev), i = eo === null ? ev.segs.length - 1 : segIndexAt(ev, eo);
+      const t = eo === null ? 1 : Math.max(0.5, eo - ev.segs[i].offset);
+      const u = await grabFrame(url(previewPath(ev)), t);
+      if (u) { ev.thumbUrl = u; setThumb(ev); } else ev.thumbFailed = true;
+    }
+  } finally { makeThumbs.busy = false; }
+}
+
+// ---------- List ----------
+const fmtDay = d => d.toLocaleDateString("fr-FR", { weekday:"long", day:"numeric", month:"long", year:"numeric" });
+const fmtTime = d => d.toLocaleTimeString("fr-FR", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+const fmtDur = s => { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+
+function renderList() {
+  const list = $("#list"); list.innerHTML = "";
+  let lastDay = "";
+  for (const ev of events) {
+    if (filter !== "all" && ev.type !== filter) continue;
+    const day = fmtDay(ev.start);
+    if (day !== lastDay) { const h = document.createElement("div"); h.className = "day"; h.textContent = day; list.appendChild(h); lastDay = day; }
+    const el = document.createElement("div");
+    const locked = ev.encrypted && !ev.metaUnlocked;
+    el.className = "ev" + (locked ? " locked" : "") + (ev === cur ? " active" : "");
+    const mins = Math.round((ev.segs[ev.segs.length - 1].offset + 60) / 60);
+    el.innerHTML = `${placeholder(ev)}
+      <div><div class="t">${fmtTime(ev.start).slice(0, 5)} <span class="tag">${TYPES[ev.type]}</span><span class="tag">${mins} min</span>${ev.encrypted ? '<span class="tag" title="Clip chiffré">' + (locked ? "🔒" : "🔓") + "</span>" : ""}</div>
+      <div class="s" data-sub>${locked ? "Chiffré — clique pour déverrouiller" : ""}</div></div>`;
+    el.onclick = () => openEvent(ev);
+    ev.el = el;
+    if (ev.meta) fillMeta(ev);
+    if (ev.thumbUrl) setThumb(ev);
+    list.appendChild(el);
+  }
+}
+function fillMeta(ev) {
+  const sub = ev.el && ev.el.querySelector("[data-sub]");
+  if (!sub || !ev.meta) return;
+  const r = REASONS[ev.meta.reason] || (ev.meta.reason || "").replace(/_/g, " ");
+  sub.textContent = [ev.meta.city, r].filter(Boolean).join(" · ");
+  sub.title = [ev.meta.street, ev.meta.city, r].filter(Boolean).join(" — ");
+}
+function placeholder(ev) {
+  const locked = ev.encrypted && !ev.metaUnlocked && !ev.unlocked;
+  const icon = ev.encrypted ? (locked ? "🔒" : "🔓") : ev.type === "SentryClips" ? "🛡️" : "🎬";
+  return `<div class="noimg${ev.encrypted && !locked ? " unl" : ""}">${icon}</div>`;
+}
+function setThumb(ev) {
+  const box = ev.el && ev.el.querySelector(".noimg");
+  if (!box) return;
+  const img = document.createElement("img");
+  img.alt = "";
+  img.onerror = () => { ev.thumbUrl = null; ev.thumbFailed = true; img.outerHTML = placeholder(ev); };   // unreadable thumbnail: padlock instead of a broken image
+  img.src = ev.thumbUrl;
+  box.replaceWith(img);
+}
+async function readMeta(ev) {
+  if (!ev.json || ev.meta) return;
+  const r = await fetch(url(ev.json));
+  if (r.ok) ev.meta = await r.json();
+}
+async function loadMetaProgressively() {
+  for (const ev of events) {
+    if (ev.encrypted) continue;   // their event.json / thumb.png can only be read by the car
+    try {
+      if (ev.json && !ev.meta) { await readMeta(ev); fillMeta(ev); }
+      if (ev.thumb && !ev.thumbUrl) { ev.thumbUrl = url(ev.thumb); setThumb(ev); }
+    } catch (e) { /* unreadable metadata: keep going */ }
+  }
+}
+
+// ---------- Playback ----------
+// Event moment: event.json when readable; otherwise the folder name, which Tesla writes a
+// few seconds after the trigger (≈4 s on the clips checked), hence the small correction.
+function eventTime(ev) {
+  if (ev.meta && ev.meta.timestamp) return { d: new Date(ev.meta.timestamp), approx: false };
+  const m = ev.folder && ev.folder.match(/^(\d{4}-\d{2}-\d{2})_(\d{2})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  return { d: new Date(new Date(`${m[1]}T${m[2]}:${m[3]}:${m[4]}`).getTime() - 4000), approx: true };
+}
+function eventOffset(ev) {
+  const e = eventTime(ev);
+  if (!e) return null;
+  const t = (e.d - ev.start) / 1000;
+  return isFinite(t) && t >= 0 ? t : null;
+}
+function total() { const s = cur.segs[cur.segs.length - 1]; return s.offset + s.dur; }
+
+async function openEvent(ev) {
+  if (ev.encrypted && !ev.unlocked) {
+    const paths = videoPaths(ev);
+    const st = await window.api.keyStatus(paths);
+    if (!st.every(Boolean)) {
+      toast("🔑 Récupération des clés auprès de Tesla…", 60000);
+      const r = await window.api.unlock(paths);
+      if (!r || r.cancelled) { toast("Connexion Tesla annulée : ce clip reste chiffré."); return; }
+      if (r.error) { toast("Tesla : " + r.error); return; }
+      if (r.failed && r.failed.length) toast(`${r.failed.length} fichier(s) n'ont pas pu être déverrouillés (${r.failed[0][1]}).`);
+      else if (r.noEscrow) toast(`${r.noEscrow} vidéo(s) ne sont lisibles que dans la voiture.`);
+      else hideToast();
+    }
+    ev.unlocked = true; ev.metaUnlocked = true;
+    renderList(); updateStatus(); makeThumbs();
+  }
+  cur = ev;
+  for (const e of document.querySelectorAll(".ev.active")) e.classList.remove("active");
+  ev.el && ev.el.classList.add("active");
+  $("#empty").hidden = true; stage.hidden = false; $("#bar").hidden = false;
+  if (!ev.encrypted && ev.json && !ev.meta) { try { await readMeta(ev); fillMeta(ev); } catch {} }
+  const eo = eventOffset(ev);
+  const et = eventTime(ev);
+  $("#info").textContent = [TYPES[ev.type], ev.meta && ev.meta.street, ev.meta && ev.meta.city, ev.meta && (REASONS[ev.meta.reason] || ev.meta.reason),
+    et && `événement ${et.approx ? "≈ " : ""}${fmtTime(et.d)}`].filter(Boolean).join(" · ");
+  $("#toEvent").hidden = eo === null;
+  // Sentry/Saved: start a few seconds before the trigger, like the car does.
+  const startAt = eo !== null && ev.type !== "RecentClips" ? Math.max(0, eo - 10) : 0;
+  await seekGlobal(startAt, true);
+  updateMarker();
+}
+
+function segAt(g) {
+  let i = 0;
+  for (let k = 0; k < cur.segs.length; k++) if (cur.segs[k].offset <= g + 0.01) i = k;
+  return i;
+}
+
+async function loadSegment(i, tIn) {
+  const token = ++loadToken;
+  segIdx = i;
+  const seg = cur.segs[i];
+  CAMS.forEach(c => {
+    const v = vids[c.id];
+    v.pause();
+    const f = seg.files[c.id];
+    urls[c.id] = f ? url(f) : null;
+    stage.querySelector(`[data-cam="${c.id}"]`).classList.toggle("missing", !f);
+    if (f) v.src = urls[c.id];
+    else v.removeAttribute("src");
+    v.load();
+    v.playbackRate = rate;
+  });
+  loadTelemetry(seg);
+  const m = vids[masterId()];
+  await new Promise(res => { if (m.readyState >= 1) res(); else { m.addEventListener("loadedmetadata", res, { once:true }); m.addEventListener("error", res, { once:true }); } });
+  if (token !== loadToken) return;
+  if (isFinite(m.duration) && m.duration > 0) { seg.dur = m.duration; $("#seek").max = total(); }
+  for (const c of CAMS) if (urls[c.id]) { try { vids[c.id].currentTime = Math.min(tIn, seg.dur - 0.05); } catch {} }
+  if (playing) playAll();
+}
+
+async function seekGlobal(g, forceReload) {
+  g = Math.max(0, Math.min(g, total() - 0.05));
+  const i = segAt(g), tIn = g - cur.segs[i].offset;
+  if (i !== segIdx || forceReload) await loadSegment(i, tIn);
+  else for (const c of CAMS) if (urls[c.id]) vids[c.id].currentTime = Math.min(tIn, cur.segs[i].dur - 0.05);
+}
+function nextSegment() {
+  if (cur && segIdx < cur.segs.length - 1) loadSegment(segIdx + 1, 0);
+  else { playing = false; $("#play").textContent = "▶"; }
+}
+function playAll() { for (const c of CAMS) if (urls[c.id]) vids[c.id].play().catch(() => {}); }
+function pauseAll() { for (const c of CAMS) vids[c.id].pause(); }
+function togglePlay() {
+  if (!cur) return;
+  playing = !playing;
+  $("#play").textContent = playing ? "⏸" : "▶";
+  playing ? playAll() : pauseAll();
+}
+function setRate(r) {
+  rate = r; $("#rate").value = String(r);
+  for (const c of CAMS) vids[c.id].playbackRate = r;
+}
+
+// Keep every camera locked on the master camera's clock.
+function tick() {
+  if (cur && segIdx >= 0) {
+    const mid = masterId(), m = vids[mid], t = m.currentTime;
+    const thr = 0.08 + 0.06 * rate;
+    for (const c of CAMS) {
+      if (c.id === mid || !urls[c.id]) continue;
+      const v = vids[c.id];
+      if (v.readyState >= 1 && Math.abs(v.currentTime - t) > thr && t < (v.duration || 1e9)) v.currentTime = t;
+      if (playing && v.paused && !v.ended && !m.paused) v.play().catch(() => {});
+    }
+    const g = cur.segs[segIdx].offset + t;
+    updateHud(cur.segs[segIdx], t);
+    if (!seeking) $("#seek").value = g;
+    $("#clock").textContent = fmtTime(new Date(cur.start.getTime() + g * 1000));
+    $("#rel").textContent = `${fmtDur(g)} / ${fmtDur(total())}`;
+  }
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+function updateMarker() {
+  const eo = eventOffset(cur), mk = $("#mark"), s = $("#seek");
+  s.max = total();
+  if (eo === null) { mk.style.display = "none"; return; }
+  mk.style.display = "block";
+  const et = eventTime(cur);
+  mk.querySelector(".flag").title = `Événement ${et.approx ? "≈ " : "à "}${fmtTime(et.d)} — clic pour y aller (E)`;
+  mk.style.left = `calc(${(eo / total()) * 100}% - 1px)`;
+}
+
+// ---------- UI wiring ----------
+$("#pick").onclick = async () => {
+  $("#status").textContent = "Lecture du dossier…";
+  const r = await window.api.pickFolder();
+  if (r) loadFolder(r.entries, r.name); else updateStatus();
+};
+
+// ---------- Tesla account ----------
+function showAuth(s) {
+  authed = s.connected;
+  $("#auth").textContent = s.connected ? "🟢 Tesla connecté" : s.windowOpen ? "⏳ Connexion…" : "🔑 Connexion Tesla";
+  $("#auth").classList.toggle("on", s.connected);
+  $("#authState").textContent = s.connected ? "Connecté : les clips chiffrés peuvent être déverrouillés." +
+      (s.expiresAt ? ` Session Tesla valide jusqu'à ${new Date(s.expiresAt).toLocaleString("fr-FR", { weekday:"short", hour:"2-digit", minute:"2-digit" })} (durée fixée par Tesla).` : "")
+    : "Non connecté. Les clips déjà déverrouillés restent lisibles hors connexion.";
+}
+window.api.onAuth(s => { const was = authed; showAuth(s); if (s.connected && !was && events.length) unlockPreviews(); });
+window.api.authStatus().then(showAuth);
+const dlg = $("#authDlg");
+$("#auth").onclick = () => dlg.showModal();
+$("#dlgClose").onclick = () => dlg.close();
+$("#dlgConnect").onclick = async () => { dlg.close(); const r = await window.api.connect(); if (!r.ok) toast("Connexion annulée."); };
+$("#dlgSignout").onclick = async () => { showAuth(await window.api.signOut()); toast("Déconnecté de Tesla (les clés déjà enregistrées restent)."); };
+$("#dlgForget").onclick = async () => {
+  if (!confirm("Supprimer toutes les clés enregistrées sur ce PC ? Il faudra se reconnecter pour relire les clips chiffrés.")) return;
+  await window.api.forgetKeys(); toast("Clés supprimées."); dlg.close();
+};
+$("#dlgTokenOk").onclick = async () => { showAuth(await window.api.manualToken($("#dlgToken").value)); $("#dlgToken").value = ""; dlg.close(); };
+for (const b of document.querySelectorAll(".filters button")) b.onclick = () => {
+  filter = b.dataset.f;
+  document.querySelectorAll(".filters button").forEach(x => x.classList.toggle("on", x === b));
+  renderList();
+};
+$("#play").onclick = togglePlay;
+$("#rate").onchange = e => setRate(+e.target.value);
+$("#layoutSel").onchange = e => setLayout(e.target.value);
+$("#hudBtn").onclick = () => setHud(!hudOn);
+$("#mark").querySelector(".flag").onclick = () => $("#toEvent").click();
+$("#toEvent").onclick = () => { const eo = eventOffset(cur); if (eo !== null) seekGlobal(Math.max(0, eo - 3)); };
+$("#prevEv").onclick = () => stepEvent(-1);
+$("#nextEv").onclick = () => stepEvent(1);
+const seekEl = $("#seek");
+seekEl.addEventListener("input", () => { seeking = true; seekGlobal(+seekEl.value); });
+seekEl.addEventListener("change", () => { seeking = false; });
+
+function stepEvent(d) {
+  const vis = events.filter(e => filter === "all" || e.type === filter);
+  const i = vis.indexOf(cur);
+  const n = vis[i < 0 ? 0 : i + d];
+  if (n) { openEvent(n); n.el && n.el.scrollIntoView({ block:"nearest" }); }
+}
+function toggleFullscreen() {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else $("#player").requestFullscreen().catch(() => {});
+}
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "SELECT" || e.ctrlKey || e.altKey) return;
+  const g = cur ? cur.segs[segIdx].offset + vids[masterId()].currentTime : 0;
+  const cam = CAMS.find(c => c.key === e.key);
+  if (e.code === "Space") { e.preventDefault(); togglePlay(); }
+  else if (e.key === "ArrowRight" && cur) { e.preventDefault(); seekGlobal(g + (e.shiftKey ? 1 : 5)); }
+  else if (e.key === "ArrowLeft" && cur) { e.preventDefault(); seekGlobal(g - (e.shiftKey ? 1 : 5)); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); stepEvent(-1); }
+  else if (e.key === "ArrowDown") { e.preventDefault(); stepEvent(1); }
+  else if (cam) { if (!stage.classList.contains("focus")) setLayout("focus", false); setMain(cam.id); }
+  else if (e.key === "g" || e.key === "G") setLayout(LAYOUTS[(LAYOUTS.indexOf(stage.className) + 1) % LAYOUTS.length]);
+  else if (e.key === "Escape") setLayout(prefLayout, false);
+  else if (e.key === "t" || e.key === "T") setHud(!hudOn);
+  else if (e.key === "e" || e.key === "E") $("#toEvent").click();
+  else if (e.key === "f" || e.key === "F") toggleFullscreen();
+  else if (e.key === "+") setRate([0.25, 0.5, 1, 2, 4].find(r => r > rate) || 4);
+  else if (e.key === "-") setRate([4, 2, 1, 0.5, 0.25].find(r => r < rate) || 0.25);
+});
+function toast(msg, ms = 4500) {
+  const t = $("#toast"); t.textContent = msg; t.style.display = "block";
+  clearTimeout(toast.h); toast.h = setTimeout(hideToast, ms);
+}
+function hideToast() { $("#toast").style.display = "none"; }
+setLayout(prefLayout, false);
+setHud(hudOn);
+</script>
+</body>
+</html>
