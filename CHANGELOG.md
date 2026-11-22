@@ -3,6 +3,16 @@
 Chaque version est décrite en français puis en anglais. Les notes de release GitHub sont générées à partir de ce fichier.
 Each version is described in French, then in English. GitHub release notes are generated from this file.
 
+## [0.4.1] - 2026-11-22
+
+### 🇫🇷 Français
+- **Nouveau nom : « Dashcam Viewer for Tesla »** (anciennement « TeslaCam Viewer »), pour ne plus commencer par une marque de Tesla. Le logo « T » est remplacé par une icône neutre.
+- Les clés déjà enregistrées, la connexion Tesla et les réglages sont conservés.
+
+### 🇬🇧 English
+- **New name: “Dashcam Viewer for Tesla”** (formerly “TeslaCam Viewer”), so the name no longer starts with a Tesla trademark. The “T” logo is replaced by a neutral icon.
+- Saved keys, the Tesla sign-in and settings are kept.
+
 ## [0.4.0] - 2026-11-22
 
 ### 🇫🇷 Français

@@ -54,8 +54,8 @@ jobs:
         shell: pwsh
         run: |
           $ver = $env:TAG.TrimStart('v')
-          $zip = "TeslaCam-Viewer-$ver-win64.zip"
-          Compress-Archive -Path "dist/TeslaCam Viewer-win32-x64" -DestinationPath $zip
+          $zip = "Dashcam-Viewer-for-Tesla-$ver-win64.zip"
+          Compress-Archive -Path "dist/Dashcam Viewer for Tesla-win32-x64" -DestinationPath $zip
           (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower() + "  " + $zip | Out-File "$zip.sha256" -Encoding ascii
           "ZIP=$zip" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
 

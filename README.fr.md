@@ -1,4 +1,4 @@
-# TeslaCam Viewer
+# Dashcam Viewer for Tesla
 
 🇬🇧 [English](README.md) · 🇫🇷 **Français**
 
@@ -30,7 +30,7 @@ Lecteur Windows pour les clips **Dashcam / Sentinelle** enregistrés par une Tes
 
 ## Installation
 
-Télécharger le zip de la [dernière release](../../releases/latest), le dézipper et lancer `TeslaCam Viewer.exe`.
+Télécharger le zip de la [dernière release](../../releases/latest), le dézipper et lancer `Dashcam Viewer for Tesla.exe`.
 
 ## Développement
 
