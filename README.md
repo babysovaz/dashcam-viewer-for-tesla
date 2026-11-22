@@ -1,4 +1,4 @@
-# TeslaCam Viewer
+# Dashcam Viewer for Tesla
 
 🇬🇧 **English** · 🇫🇷 [Français](README.fr.md)
 
@@ -30,7 +30,7 @@ A Windows player for the **Dashcam / Sentry Mode** clips a Tesla records on its 
 
 ## Install
 
-Download the zip from the [latest release](../../releases/latest), extract it and run `TeslaCam Viewer.exe`.
+Download the zip from the [latest release](../../releases/latest), extract it and run `Dashcam Viewer for Tesla.exe`.
 
 ## Development
 

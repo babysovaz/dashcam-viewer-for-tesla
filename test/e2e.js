@@ -36,6 +36,7 @@ module.exports = async (win, entries, app) => {
     await sleep(4000);
     log("thumbs:", await run('JSON.stringify(events.map(e => [e.folder, e.thumbUrl ? (e.thumbUrl.startsWith("data:") ? "generated" : "file") : (e.thumbFailed ? "failed" : "none")]))'));
     log("broken imgs:", await run('[...document.querySelectorAll(".ev img")].filter(i => i.complete && !i.naturalWidth).length'));
+    log("title + userData:", JSON.stringify([win.getTitle(), app.getPath("userData")]), await run("document.querySelector(\"h1\").textContent"));
     log("FR texts:", await run('JSON.stringify([document.querySelector("#pick").textContent, document.querySelector("#auth").textContent, document.querySelector("#hBrake").textContent, document.querySelector(".cam .lbl").textContent, document.querySelector("#layoutSel").selectedOptions[0].textContent])'));
     await run('document.querySelector("#langSel").value = "en"; document.querySelector("#langSel").dispatchEvent(new Event("change"))'); await sleep(800);
     log("EN texts:", await run('JSON.stringify([document.querySelector("#pick").textContent, document.querySelector("#status").textContent, document.querySelector("#auth").textContent, document.querySelector("#hBrake").textContent, document.querySelector("#hAp").textContent, document.querySelector(".cam .lbl").textContent, document.querySelector("#layoutSel").selectedOptions[0].textContent, document.querySelector("#info").textContent, document.querySelector(".day").textContent, document.querySelector(".ev .s").textContent])'));

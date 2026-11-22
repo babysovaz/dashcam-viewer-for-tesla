@@ -12,6 +12,10 @@ protocol.registerSchemesAsPrivileged([{
   scheme: "tcam", privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true, corsEnabled: true },
 }]);
 
+// The app was first called "TeslaCam Viewer": keep its data folder so saved keys, the
+// Tesla sign-in and the user's settings survive the rename.
+app.setPath("userData", path.join(app.getPath("appData"), "TeslaCam Viewer"));
+
 let mainWin = null;
 let root = null;          // folder chosen by the user: nothing outside it is ever served
 let sampleFile = null;
@@ -122,7 +126,7 @@ async function withToken(fn) {
 function createWindow() {
   mainWin = new BrowserWindow({
     width: 1500, height: 920, minWidth: 1000, minHeight: 640, backgroundColor: "#0e0f11",
-    title: "TeslaCam Viewer", autoHideMenuBar: true,
+    title: "Dashcam Viewer for Tesla", autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, sandbox: true, nodeIntegration: false },
   });
   mainWin.loadFile(path.join(__dirname, "..", "renderer", "index.html"));

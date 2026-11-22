@@ -18,9 +18,9 @@ process.stdout.write(`${section || "_Voir / see CHANGELOG.md_"}
 
 ---
 
-**Installation (FR)** — Télécharger le zip ci-dessous, le dézipper, lancer \`TeslaCam Viewer.exe\`. L'exécutable n'est pas signé : au premier lancement, Windows SmartScreen → *Informations complémentaires* → *Exécuter quand même*.
+**Installation (FR)** — Télécharger le zip ci-dessous, le dézipper, lancer \`Dashcam Viewer for Tesla.exe\`. L'exécutable n'est pas signé : au premier lancement, Windows SmartScreen → *Informations complémentaires* → *Exécuter quand même*.
 
-**Installation (EN)** — Download the zip below, extract it, run \`TeslaCam Viewer.exe\`. The executable is unsigned: on first launch, Windows SmartScreen → *More info* → *Run anyway*.
+**Installation (EN)** — Download the zip below, extract it, run \`Dashcam Viewer for Tesla.exe\`. The executable is unsigned: on first launch, Windows SmartScreen → *More info* → *Run anyway*.
 
 *Non affilié à Tesla, Inc. · Not affiliated with Tesla, Inc.*
 `);

@@ -1,14 +1,14 @@
 {
-  "name": "teslacam-viewer",
-  "productName": "TeslaCam Viewer",
-  "version": "0.4.0",
+  "name": "dashcam-viewer-for-tesla",
+  "productName": "Dashcam Viewer for Tesla",
+  "version": "0.4.1",
   "description": "Lecteur multi-caméras des clips dashcam/Sentinelle Tesla, avec déchiffrement local des clips 2026.20+.",
   "main": "src/main.js",
   "private": true,
   "scripts": {
     "start": "electron .",
     "test": "node test/container.test.js",
-    "package": "electron-packager . \"TeslaCam Viewer\" --platform=win32 --arch=x64 --out=dist --overwrite --asar --ignore=^/test --ignore=^/dist --ignore=^/scripts --ignore=^/\\.github --ignore=^/samples"
+    "package": "electron-packager . \"Dashcam Viewer for Tesla\" --platform=win32 --arch=x64 --out=dist --overwrite --asar --ignore=^/test --ignore=^/dist --ignore=^/scripts --ignore=^/\\.github --ignore=^/samples"
   },
   "devDependencies": {
     "@electron/packager": "^18.3.6",
