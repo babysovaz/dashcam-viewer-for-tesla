@@ -12,6 +12,7 @@ Each version is described in French, then in English. GitHub release notes are g
   - Barre de progression avec temps restant, bouton Arrêter (le fichier incomplet est supprimé), clic sur le message final pour ouvrir le dossier.
 - **La vue « comme dans la voiture » est fusionnée avec la grille 3×2**, qui devient la vue par défaut (c'était la même disposition).
 - Correction : la télémétrie pouvait planter l'affichage en conduite manuelle.
+- Correction : en fin d'événement, les caméras dont la vidéo dure un peu plus que la caméra principale continuaient de tourner en boucle sur la dernière image ; tout s'arrête maintenant, et Lecture relance l'événement depuis le début.
 
 ### 🇬🇧 English
 - **Video export**, depending on the current view (button next to “⚑ Event”):
@@ -20,6 +21,7 @@ Each version is described in French, then in English. GitHub release notes are g
   - Progress bar with time left, Stop button (the partial file is deleted), click the final message to open the folder.
 - **The “like in the car” view is merged into the 3×2 grid**, now the default view (it was the same layout).
 - Fix: telemetry could break the display while driving manually.
+- Fix: at the end of an event, cameras whose file runs slightly longer than the main camera kept looping on the last frame; everything now stops, and Play starts the event over.
 
 ## [0.4.1] - 2026-11-22
 
