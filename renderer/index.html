@@ -572,14 +572,16 @@ async function seekGlobal(g, forceReload) {
 }
 function nextSegment() {
   if (cur && segIdx < cur.segs.length - 1) loadSegment(segIdx + 1, 0);
-  else { playing = false; $("#play").textContent = "▶"; }
+  else { playing = false; pauseAll(); $("#play").textContent = "▶"; }   // end of the event: stop every camera
 }
 function playAll() { for (const c of CAMS) if (urls[c.id]) vids[c.id].play().catch(() => {}); }
 function pauseAll() { for (const c of CAMS) vids[c.id].pause(); }
-function togglePlay() {
+function atEventEnd() { const m = vids[masterId()]; return segIdx === cur.segs.length - 1 && m.ended; }
+async function togglePlay() {
   if (!cur) return;
   playing = !playing;
   $("#play").textContent = playing ? "⏸" : "▶";
+  if (playing && atEventEnd()) { await seekGlobal(0, true); return; }   // Play at the very end: start the event over
   playing ? playAll() : pauseAll();
 }
 function setRate(r) {
@@ -597,6 +599,8 @@ function tick() {
       const v = vids[c.id];
       if (v.readyState >= 1 && Math.abs(v.currentTime - t) > thr && t < (v.duration || 1e9)) v.currentTime = t;
       if (playing && v.paused && !v.ended && !m.paused) v.play().catch(() => {});
+      // Master finished but this camera's file is a bit longer: hold it on the master's last frame.
+      if (m.ended && !v.paused) v.pause();
     }
     const g = cur.segs[segIdx].offset + t;
     updateHud(cur.segs[segIdx], t);
