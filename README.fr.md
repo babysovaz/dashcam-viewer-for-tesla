@@ -8,7 +8,10 @@ Lecteur Windows pour les clips **Dashcam / Sentinelle** enregistrés par une Tes
 
 ## Fonctionnalités
 
-- **6 caméras synchronisées** (avant, arrière, montants, répétiteurs), plusieurs dispositions : *comme dans la voiture*, *avant + arrière*, *une caméra en grand*, *grille 3×2*.
+- **6 caméras synchronisées** (avant, arrière, montants, répétiteurs), plusieurs dispositions : *grille 3×2* (comme dans la voiture), *avant + arrière*, *une caméra en grand*.
+- **Export vidéo**, selon la vue affichée :
+  - *une caméra en grand* → cette caméra enregistrée en **un seul MP4 pour tout l'événement, sans réencodage** (qualité d'origine, quelques secondes, déchiffrée si le clip l'était) ;
+  - *grille 3×2* ou *avant + arrière* → **une vidéo mosaïque** des 6 caméras disposées comme à l'écran, avec date/heure et télémétrie incrustées au choix, en Full HD (idéal téléphone) ou 4K. Encodage dans l'application (H.264 via WebCodecs), sans logiciel supplémentaire.
 - **Clips chiffrés** : déchiffrement **local et à la volée** (seul ce qui est regardé est déchiffré, rien n'est écrit en clair sur le disque).
 - **Télémétrie** embarquée par Tesla dans la vidéo : vitesse, rapport, angle du volant, accélérateur, frein, clignotants, Autosteer / FSD.
 - **Repère de l'événement** sur la timeline, vignettes, filtres Enregistrés / Sentinelle / Récents, raccourcis clavier.
@@ -25,6 +28,7 @@ Lecteur Windows pour les clips **Dashcam / Sentinelle** enregistrés par une Tes
 
 - Le déchiffrement repose sur l'**API non documentée** du lecteur web de Tesla : une évolution côté Tesla peut le casser.
 - Dans `EncryptedClips`, `event.json` et `thumb.png` ne contiennent pas de métadonnées de clé : seule la voiture peut les lire. Le moment de l'événement est alors déduit du nom du dossier (≈ quelques secondes près) et la vignette est prise dans la vidéo.
+- L'export en mosaïque réencode chaque image : il utilise la carte graphique quand elle est disponible mais reste bien plus lent que l'export d'une caméra, surtout en 4K.
 - La télémétrie n'existe que sur les clips récents (logiciel 2025.44.25+, HW3+) et pas quand la voiture est garée.
 - L'exécutable n'est pas signé : Windows SmartScreen demande une confirmation au premier lancement.
 
@@ -39,6 +43,7 @@ npm install
 npm start          # lancer en développement
 npm run package    # construire l'application Windows (dist/)
 npm test           # tests du déchiffrement (TCV_SAMPLES=chemin/vers/TeslaCam)
+node test/make-synthetic.js   # clips synthétiques 6 caméras pour le test d'export (ffmpeg requis)
 ```
 
 Raccourcis : `Espace` lecture · `←/→` ±5 s (`Maj` ±1 s) · `1`–`6` caméra · `G` disposition · `T` télémétrie · `E` événement · `↑/↓` événement précédent/suivant · `F` plein écran · `Échap` vue par défaut.
@@ -46,6 +51,7 @@ Raccourcis : `Espace` lecture · `←/→` ±5 s (`Maj` ±1 s) · `1`–`6` cam�
 ## Crédits
 
 - Format du conteneur chiffré et de l'appel de clés : travaux de rétro-ingénierie publiés par [steiner-dominik/tesla-dashcam-decrypt](https://github.com/steiner-dominik/tesla-dashcam-decrypt), [crstian19/tesla-dashcam-decrypt-go](https://github.com/crstian19/tesla-dashcam-decrypt-go) et [pieczorx/tesla-manager](https://github.com/pieczorx/tesla-manager).
+- Lecture, assemblage et écriture MP4 des vidéos : [Mediabunny](https://mediabunny.dev/) (MPL-2.0).
 - Format de la télémétrie : [`dashcam.proto`](https://github.com/teslamotors/dashcam) publié par Tesla.
 
 ## Publier une version

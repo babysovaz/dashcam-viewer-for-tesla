@@ -1,5 +1,5 @@
 "use strict";
-const { app, BrowserWindow, dialog, ipcMain, protocol } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, protocol, shell } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const keys = require("./keys");
@@ -22,8 +22,8 @@ let sampleFile = null;
 // UI language, set by the renderer; only used for the few texts drawn by this process.
 let lang = "fr";
 const TXT = {
-  fr: { pick: "Choisir le dossier TeslaCam", login: "Connexion Tesla — dashcam.tesla.com" },
-  en: { pick: "Choose the TeslaCam folder", login: "Tesla sign-in — dashcam.tesla.com" },
+  fr: { pick: "Choisir le dossier TeslaCam", login: "Connexion Tesla — dashcam.tesla.com", save: "Enregistrer la vidéo", video: "Vidéo MP4" },
+  en: { pick: "Choose the TeslaCam folder", login: "Tesla sign-in — dashcam.tesla.com", save: "Save the video", video: "MP4 video" },
 };
 const tx = k => (TXT[lang] || TXT.fr)[k];    // one encrypted clip, used to trigger the sign-in token capture
 
@@ -165,6 +165,41 @@ app.whenReady().then(() => {
   ipcMain.handle("auth-manual", (_e, raw) => auth.setManual(raw));
   ipcMain.handle("auth-signout", async () => { await auth.signOut(); return auth.status(); });
   ipcMain.handle("forget-keys", () => { keys.clearCache(); return true; });
+
+  // ---- Video export: the renderer builds the MP4 and streams it here, chunk by chunk, into
+  // a file the user picked. Nothing can be written anywhere else.
+  const outs = new Map();   // id -> { fd, path }
+  let outSeq = 0;
+  ipcMain.handle("save-open", async (_e, name) => {
+    const safe = String(name || "video.mp4").replace(/[\\/:*?"<>|]/g, "_");
+    let target = process.env.TCV_TEST_OUT ? path.join(process.env.TCV_TEST_OUT, safe) : null;
+    if (!target) {
+      const r = await dialog.showSaveDialog(mainWin, { title: tx("save"), defaultPath: path.join(app.getPath("videos"), safe), filters: [{ name: tx("video"), extensions: ["mp4"] }] });
+      if (r.canceled || !r.filePath) return null;
+      target = r.filePath;
+    }
+    const id = ++outSeq;
+    outs.set(id, { fd: fs.openSync(target, "w"), path: target });
+    return { id, name: path.basename(target) };
+  });
+  ipcMain.handle("save-write", (_e, id, pos, data) => {
+    const o = outs.get(id);
+    if (!o) throw new Error("closed");
+    const buf = Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+    let done = 0;
+    while (done < buf.length) done += fs.writeSync(o.fd, buf, done, buf.length - done, pos + done);
+  });
+  const written = new Set();   // finished files, the only ones "show in folder" may reveal
+  ipcMain.handle("save-close", (_e, id, ok) => {
+    const o = outs.get(id);
+    if (!o) return null;
+    outs.delete(id);
+    try { fs.closeSync(o.fd); } catch {}
+    if (!ok) { try { fs.unlinkSync(o.path); } catch {} return null; }
+    written.add(o.path);
+    return { path: o.path, size: fs.statSync(o.path).size };
+  });
+  ipcMain.handle("show-file", (_e, p) => { if (written.has(p)) shell.showItemInFolder(p); });
   auth.onChange(s => mainWin && mainWin.webContents.send("auth-changed", s));
 
   createWindow();
@@ -175,7 +210,7 @@ app.whenReady().then(() => {
     root = path.resolve(process.env.TCV_TEST_DIR);
     const testKeys = JSON.parse(process.env.TCV_TEST_KEYS || "{}");
     for (const [p, hex] of Object.entries(testKeys)) keys.loadCache().set(keys.info(p).cid, Buffer.from(hex, "hex").toString("base64"));
-    mainWin.webContents.once("did-finish-load", () => require(path.join(__dirname, "..", "test", "e2e.js"))(mainWin, scan(root), app));
+    mainWin.webContents.once("did-finish-load", () => require(path.join(__dirname, "..", "test", path.basename(process.env.TCV_TEST_SCRIPT || "e2e.js")))(mainWin, scan(root), app));
   }
 });
 app.on("window-all-closed", () => app.quit());
