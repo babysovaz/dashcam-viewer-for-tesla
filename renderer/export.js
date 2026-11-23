@@ -244,10 +244,12 @@ function refreshExportButton() {
   b.title = t(cam ? "exp_btn_cam_t" : "exp_btn_mosaic_t", { cam: t("cam_" + mainCam) });
 }
 
+// "🚗 Grille 3×2 (comme dans la voiture)" → "Grille 3×2": the menu label is too long for a title.
+const shortLayoutName = l => t("lay_" + l).replace(/^\p{Extended_Pictographic}\uFE0F?\s*/u, "").replace(/\s*\(.*\)\s*$/, "");
 function openExportDialog() {
   if (!cur || exportJob) return;
   const d = document.querySelector("#expDlg"), cam = exportKind() === "camera";
-  d.querySelector("#expTitle").textContent = cam ? t("exp_title_cam", { cam: t("cam_" + mainCam) }) : t("exp_title_mosaic", { layout: t("lay_" + document.querySelector("#stage").className) });
+  d.querySelector("#expTitle").textContent = cam ? t("exp_title_cam", { cam: t("cam_" + mainCam) }) : t("exp_title_mosaic", { layout: shortLayoutName(document.querySelector("#stage").className) });
   d.querySelector("#expMosaicOpts").hidden = cam;
   d.querySelector("#expHint").textContent = t(cam ? "exp_hint_cam" : "exp_hint_mosaic");
   const mins = Math.max(1, Math.round((cur.segs[cur.segs.length - 1].offset + cur.segs[cur.segs.length - 1].dur) / 60));
