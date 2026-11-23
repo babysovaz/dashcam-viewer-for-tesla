@@ -29,8 +29,8 @@ module.exports = async (win, entries, app) => {
 
     await run('openEvent(events.find(e => e.folder === "2026-11-18_16-40-44"))'); await sleep(3500);
     log("encrypted drive + HUD:", await run(`JSON.stringify({hud: !document.querySelector("#hud").hidden, speed: document.querySelector("#hSpeed").textContent, ap: document.querySelector("#hAp").textContent, gear: document.querySelector("#hud .gear .on")?.textContent, steer: document.querySelector("#hSteer").textContent, info: document.querySelector("#info").textContent, mark: document.querySelector("#mark").style.left, layout: document.querySelector("#stage").className})`));
-    await run("setLayout(\"car\")"); await sleep(800);
-    fs.writeFileSync("/tmp/tcv-e2e-car.png", (await win.webContents.capturePage()).toPNG());
+    await run("setLayout(\"grid\")"); await sleep(800);
+    fs.writeFileSync("/tmp/tcv-e2e-grid.png", (await win.webContents.capturePage()).toPNG());
     await run('setLayout("fb")'); await sleep(800);
     fs.writeFileSync("/tmp/tcv-e2e-fb.png", (await win.webContents.capturePage()).toPNG());
     await sleep(4000);
