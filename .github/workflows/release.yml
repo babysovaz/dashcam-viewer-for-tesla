@@ -4,7 +4,9 @@
 #  - you publish a release on github.com (e.g. tag v0.4.0) → the app is built and attached;
 #    if the release description is empty, the bilingual notes from CHANGELOG.md are used.
 #  - manual run (Actions tab → "Build & attach release" → Run workflow) for an existing tag,
-#    e.g. to attach the app to a release created by hand.
+#    e.g. to attach the app to a release created by hand;
+#  - manual run with the tag left empty: just builds the chosen branch and keeps the zip and
+#    the installer as a workflow artifact, to test before releasing.
 name: Build & attach release
 
 on:
@@ -13,8 +15,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing release tag (e.g. v0.3.0)"
-        required: true
+        description: "Existing release tag (e.g. v0.3.0) — leave empty to only build this branch for testing"
+        required: false
+        default: ""
 
 permissions:
   contents: write   # needed to upload the asset and edit the release notes
@@ -28,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          ref: ${{ github.event.release.tag_name || inputs.tag || github.ref }}
 
       - uses: actions/setup-node@v4
         with:
@@ -44,26 +47,45 @@ jobs:
         run: if [ -d samples/TeslaCam ]; then npm test; else echo "No samples/ folder - skipping"; fi
 
       - name: Set app version from tag
+        if: env.TAG != ''
         shell: bash
         run: npm version "${TAG#v}" --no-git-tag-version --allow-same-version
 
       - name: Package
         run: npm run package
 
-      - name: Zip
+      - name: Installer (Setup.exe, built from the same packaged app)
+        run: npm run installer
+
+      - name: Zip, checksums
         shell: pwsh
         run: |
-          $ver = $env:TAG.TrimStart('v')
+          $ver = (Get-Content package.json -Raw | ConvertFrom-Json).version
           $zip = "Dashcam-Viewer-for-Tesla-$ver-win64.zip"
+          $exe = "Dashcam-Viewer-for-Tesla-$ver-Setup.exe"
           Compress-Archive -Path "dist/Dashcam Viewer for Tesla-win32-x64" -DestinationPath $zip
-          (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower() + "  " + $zip | Out-File "$zip.sha256" -Encoding ascii
+          Copy-Item "dist/installer/$exe" $exe
+          foreach ($f in @($zip, $exe)) { (Get-FileHash $f -Algorithm SHA256).Hash.ToLower() + "  " + $f | Out-File "$f.sha256" -Encoding ascii }
           "ZIP=$zip" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "EXE=$exe" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Keep the files as a workflow artifact (test build, no release)
+        if: env.TAG == ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: |
+            Dashcam-Viewer-for-Tesla-*-win64.zip*
+            Dashcam-Viewer-for-Tesla-*-Setup.exe*
+          retention-days: 7
 
       - name: Attach to release
+        if: env.TAG != ''
         shell: bash
-        run: gh release upload "$TAG" "$ZIP" "$ZIP.sha256" --clobber
+        run: gh release upload "$TAG" "$EXE" "$EXE.sha256" "$ZIP" "$ZIP.sha256" --clobber
 
       - name: Bilingual release notes from CHANGELOG.md (only if the description is empty)
+        if: env.TAG != ''
         shell: bash
         run: |
           body="$(gh release view "$TAG" --json body --jq .body)"

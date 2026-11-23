@@ -3,6 +3,18 @@
 Chaque version est décrite en français puis en anglais. Les notes de release GitHub sont générées à partir de ce fichier.
 Each version is described in French, then in English. GitHub release notes are generated from this file.
 
+## [0.5.1] - 2026-11-23
+
+### 🇫🇷 Français
+- **Installateur Windows** (`…-Setup.exe`) : double-clic, l'application s'installe pour ton compte sans droits administrateur, avec raccourcis Bureau et menu Démarrer, et se désinstalle depuis *Paramètres → Applications*. Le zip reste disponible pour une utilisation sans installation.
+- **Nouvelle icône** pour l'application (caméra sur fond rouge, sans marque).
+- Les clés enregistrées, la connexion Tesla et les réglages sont conservés.
+
+### 🇬🇧 English
+- **Windows installer** (`…-Setup.exe`): double-click, the app installs for your account with no admin rights, with Desktop and Start menu shortcuts, and uninstalls from *Settings → Apps*. The zip is still there for a no-install use.
+- **New app icon** (camera on a red background, no branding).
+- Saved keys, the Tesla sign-in and settings are kept.
+
 ## [0.5.0] - 2026-11-23
 
 ### 🇫🇷 Français

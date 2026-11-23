@@ -34,7 +34,12 @@ Lecteur Windows pour les clips **Dashcam / Sentinelle** enregistrés par une Tes
 
 ## Installation
 
-Télécharger le zip de la [dernière release](../../releases/latest), le dézipper et lancer `Dashcam Viewer for Tesla.exe`.
+Depuis la [dernière release](../../releases/latest) :
+
+- **`…-Setup.exe`** (conseillé) : le lancer, l'application s'installe pour ton compte (sans droits administrateur) avec un raccourci sur le Bureau et dans le menu Démarrer. Désinstallation depuis *Paramètres → Applications*.
+- **`…-win64.zip`** : sans installation — le dézipper et lancer `Dashcam Viewer for Tesla.exe`.
+
+Le logiciel n'est pas signé : au premier lancement, Windows SmartScreen affiche un avertissement → *Informations complémentaires* → *Exécuter quand même*.
 
 ## Développement
 
@@ -42,6 +47,7 @@ Télécharger le zip de la [dernière release](../../releases/latest), le dézip
 npm install
 npm start          # lancer en développement
 npm run package    # construire l'application Windows (dist/)
+npm run installer  # puis le Setup.exe (dist/installer/) — sous Windows, ou Linux avec wine
 npm test           # tests du déchiffrement (TCV_SAMPLES=chemin/vers/TeslaCam)
 node test/make-synthetic.js   # clips synthétiques 6 caméras pour le test d'export (ffmpeg requis)
 ```

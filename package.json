@@ -1,20 +1,42 @@
 {
   "name": "dashcam-viewer-for-tesla",
   "productName": "Dashcam Viewer for Tesla",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Lecteur multi-caméras des clips dashcam/Sentinelle Tesla, avec déchiffrement local des clips 2026.20+.",
   "main": "src/main.js",
   "private": true,
   "scripts": {
     "start": "electron .",
     "test": "node test/container.test.js",
-    "package": "electron-packager . \"Dashcam Viewer for Tesla\" --platform=win32 --arch=x64 --out=dist --overwrite --asar --ignore=^/test --ignore=^/dist --ignore=^/scripts --ignore=^/\\.github --ignore=^/samples --ignore=/node_modules/mediabunny/src --ignore=/node_modules/mediabunny/dist/modules --ignore=mediabunny.d.ts --ignore=bundles/mediabunny.mjs --ignore=bundles/mediabunny.cjs --ignore=bundles/mediabunny.min.mjs --ignore=bundles/mediabunny.node --ignore=bundles/mediabunny.worker"
+    "package": "electron-packager . \"Dashcam Viewer for Tesla\" --platform=win32 --arch=x64 --out=dist --overwrite --asar --icon=build/icon.ico --ignore=^/test --ignore=^/dist --ignore=^/scripts --ignore=^/\\.github --ignore=^/samples --ignore=/build --ignore=/node_modules/mediabunny/src --ignore=/node_modules/mediabunny/dist/modules --ignore=mediabunny.d.ts --ignore=bundles/mediabunny.mjs --ignore=bundles/mediabunny.cjs --ignore=bundles/mediabunny.min.mjs --ignore=bundles/mediabunny.node --ignore=bundles/mediabunny.worker",
+    "installer": "electron-builder --win nsis --x64 --prepackaged \"dist/Dashcam Viewer for Tesla-win32-x64\" --publish never"
   },
   "devDependencies": {
     "@electron/packager": "^18.3.6",
-    "electron": "45.4.1"
+    "electron": "45.4.1",
+    "electron-builder": "^26.18.0"
   },
   "dependencies": {
     "mediabunny": "^1.66.3"
+  },
+  "build": {
+    "appId": "io.github.babysovaz.dashcam-viewer-for-tesla",
+    "productName": "Dashcam Viewer for Tesla",
+    "directories": {
+      "output": "dist/installer"
+    },
+    "win": {
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Dashcam Viewer for Tesla",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "Dashcam-Viewer-for-Tesla-${version}-Setup.exe"
+    }
   }
 }

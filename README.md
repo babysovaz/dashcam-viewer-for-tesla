@@ -34,7 +34,12 @@ A Windows player for the **Dashcam / Sentry Mode** clips a Tesla records on its 
 
 ## Install
 
-Download the zip from the [latest release](../../releases/latest), extract it and run `Dashcam Viewer for Tesla.exe`.
+From the [latest release](../../releases/latest):
+
+- **`…-Setup.exe`** (recommended): run it, the app installs for your account (no admin rights) with Desktop and Start menu shortcuts. Uninstall from *Settings → Apps*.
+- **`…-win64.zip`**: no installation — extract it and run `Dashcam Viewer for Tesla.exe`.
+
+The software is unsigned: on first launch, Windows SmartScreen shows a warning → *More info* → *Run anyway*.
 
 ## Development
 
@@ -42,6 +47,7 @@ Download the zip from the [latest release](../../releases/latest), extract it an
 npm install
 npm start          # run in development
 npm run package    # build the Windows app (dist/)
+npm run installer  # then the Setup.exe (dist/installer/) — on Windows, or Linux with wine
 npm test           # decryption tests (TCV_SAMPLES=path/to/TeslaCam)
 node test/make-synthetic.js   # synthetic 6-camera clips for the export test (needs ffmpeg)
 ```
