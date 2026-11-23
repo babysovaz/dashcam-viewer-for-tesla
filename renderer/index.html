@@ -37,7 +37,6 @@
   #empty .big { font-size:42px; }
   #stage { display:grid; gap:4px; padding:4px; min-height:0; background:#000; position:relative; }
   #stage.grid { grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(2,1fr); grid-template-areas:"lp f rp" "lr b rr"; }
-  #stage.car  { grid-template-columns:1fr 1.7fr 1fr; grid-template-rows:1.3fr 1fr; grid-template-areas:"lp f rp" "lr b rr"; }
   #stage.fb   { grid-template-columns:repeat(4,1fr); grid-template-rows:1fr 26%; grid-template-areas:"f f b b" "lp lr rr rp"; }
   #stage:not(.focus) [data-cam=front]{grid-area:f} #stage:not(.focus) [data-cam=back]{grid-area:b}
   #stage:not(.focus) [data-cam=left_pillar]{grid-area:lp} #stage:not(.focus) [data-cam=right_pillar]{grid-area:rp}
@@ -79,6 +78,9 @@
   dialog { background:var(--panel); color:var(--txt); border:1px solid #3a3f47; border-radius:10px; padding:18px 20px; }
   dialog::backdrop { background:rgba(0,0,0,.6); }
   #auth.on { border-color:#2e7d32; }
+  #toast.link { cursor:pointer; }
+  #expDlg label { display:block; margin:6px 0; }
+  #expDlg progress { width:100%; height:14px; accent-color:var(--acc); }
   #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#2b2f36; padding:10px 16px; border-radius:8px; border:1px solid #3a3f47; display:none; max-width:560px; z-index:9; }
 </style>
 </head>
@@ -102,7 +104,7 @@
   </aside>
   <section id="player">
     <div id="empty"><div class="big">🎥</div><div data-i18n="empty"></div></div>
-    <div id="stage" class="car" hidden></div>
+    <div id="stage" class="grid" hidden></div>
     <div id="bar" hidden>
       <div id="tl"><input type="range" id="seek" min="0" max="60" step="0.05" value="0"><div id="mark"><span class="flag" data-i18n-title="flag_title">⚑</span></div></div>
       <div id="row">
@@ -112,10 +114,11 @@
         <span id="clock">--:--:--</span><span id="rel">0:00 / 0:00</span>
         <select id="rate" data-i18n-title="rate_t"><option>0.25</option><option>0.5</option><option selected>1</option><option>2</option><option>4</option></select>
         <select id="layoutSel" data-i18n-title="layout_t">
-          <option value="car" data-i18n="lay_car"></option><option value="fb" data-i18n="lay_fb"></option>
-          <option value="focus" data-i18n="lay_focus"></option><option value="grid" data-i18n="lay_grid"></option></select>
+          <option value="grid" data-i18n="lay_grid"></option><option value="fb" data-i18n="lay_fb"></option>
+          <option value="focus" data-i18n="lay_focus"></option></select>
         <button id="hudBtn" data-i18n-title="hud_t" data-i18n="hud_btn"></button>
         <button id="toEvent" data-i18n-title="toevent_t" data-i18n="toevent"></button>
+        <button id="exportBtn"></button>
         <span id="info"></span>
       </div>
       <div id="help" data-i18n="help"></div>
@@ -139,7 +142,29 @@
     <button id="dlgTokenOk" style="margin-top:6px" data-i18n="use_token"></button>
   </details>
 </dialog>
+<dialog id="expDlg">
+  <h3 style="margin-top:0" id="expTitle"></h3>
+  <div id="expForm">
+    <p id="expHint" style="color:var(--dim);font-size:12px;max-width:460px"></p>
+    <label><input type="radio" name="expRange" value="all" checked> <span id="expAllLbl"></span></label>
+    <label><input type="radio" name="expRange" value="seg"> <span data-i18n="exp_seg"></span></label>
+    <div id="expMosaicOpts">
+      <label><span data-i18n="exp_res"></span> <select id="expRes"><option value="1920" data-i18n="exp_res_hd" selected></option><option value="3840" data-i18n="exp_res_4k"></option></select></label>
+      <label><input type="checkbox" id="expHud"> <span data-i18n="exp_hud"></span></label>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end">
+      <button id="expCancel" data-i18n="close"></button>
+      <button id="expGo" class="primary" data-i18n="exp_go"></button>
+    </div>
+  </div>
+  <div id="expRun" hidden style="min-width:420px">
+    <progress id="expBar" max="1" value="0"></progress>
+    <p id="expTxt" style="color:var(--dim);font-size:12px"></p>
+    <div style="display:flex;justify-content:flex-end"><button id="expStop" data-i18n="exp_stop"></button></div>
+  </div>
+</dialog>
 <script src="i18n.js"></script>
+<script src="../node_modules/mediabunny/dist/bundles/mediabunny.min.cjs"></script>
 <script>
 "use strict";
 // Display order in grid mode mirrors the car's viewer: pillars/front on top, repeaters/back below.
@@ -185,19 +210,23 @@ function masterId() {
 function setMain(id) {
   mainCam = id;
   for (const el of stage.children) el.classList.toggle("main", el.dataset.cam === id);
+  if (typeof refreshExportButton === "function") refreshExportButton();
   // In focus layout the main camera gets the big slot; keep the others in the strip in car order.
   let o = 1;
   for (const c of CAMS) stage.querySelector(`[data-cam="${c.id}"]`).style.order = stage.classList.contains("focus") ? (c.id === id ? 0 : o++) : "";
 }
-const LAYOUTS = ["car", "fb", "focus", "grid"];
-let prefLayout = (() => { try { return localStorage.getItem("tcv.layout") || "car"; } catch { return "car"; } })();
-if (!LAYOUTS.includes(prefLayout)) prefLayout = "car";
+// The 3×2 grid is the car's own layout (an earlier "like in the car" view was the same thing
+// and is mapped onto it).
+const LAYOUTS = ["grid", "fb", "focus"];
+let prefLayout = (() => { try { return localStorage.getItem("tcv.layout") || "grid"; } catch { return "grid"; } })();
+if (!LAYOUTS.includes(prefLayout)) prefLayout = "grid";
 function setLayout(l, remember = true) {
   stage.className = l;
   $("#layoutSel").value = l;
   if (remember) { prefLayout = l; try { localStorage.setItem("tcv.layout", l); } catch {} }
   if (l === "fb" && mainCam !== "back") mainCam = "front";
   setMain(mainCam);
+  if (typeof refreshExportButton === "function") refreshExportButton();
 }
 
 // ---------- Telemetry HUD ----------
@@ -226,10 +255,10 @@ function telAt(arr, t) {
   while (lo < hi) { const m = (lo + hi + 1) >> 1; if (arr[m].t <= t) lo = m; else hi = m - 1; }
   return arr[lo];
 }
-function updateHud(seg, t) {
+function updateHud(seg, time) {   // not "t": that is the translation function
   const hud = $("#hud"), none = $("#hudNone");
   if (!hudOn || !seg) { hud.hidden = true; none.hidden = true; return; }
-  const d = seg.tel ? telAt(seg.tel, t) : null;
+  const d = seg.tel ? telAt(seg.tel, time) : null;
   hud.hidden = !d;
   none.hidden = !!d || !Array.isArray(seg.tel);       // hide while still loading
   if (!d) return;
@@ -543,14 +572,16 @@ async function seekGlobal(g, forceReload) {
 }
 function nextSegment() {
   if (cur && segIdx < cur.segs.length - 1) loadSegment(segIdx + 1, 0);
-  else { playing = false; $("#play").textContent = "▶"; }
+  else { playing = false; pauseAll(); $("#play").textContent = "▶"; }   // end of the event: stop every camera
 }
 function playAll() { for (const c of CAMS) if (urls[c.id]) vids[c.id].play().catch(() => {}); }
 function pauseAll() { for (const c of CAMS) vids[c.id].pause(); }
-function togglePlay() {
+function atEventEnd() { const m = vids[masterId()]; return segIdx === cur.segs.length - 1 && m.ended; }
+async function togglePlay() {
   if (!cur) return;
   playing = !playing;
   $("#play").textContent = playing ? "⏸" : "▶";
+  if (playing && atEventEnd()) { await seekGlobal(0, true); return; }   // Play at the very end: start the event over
   playing ? playAll() : pauseAll();
 }
 function setRate(r) {
@@ -568,6 +599,8 @@ function tick() {
       const v = vids[c.id];
       if (v.readyState >= 1 && Math.abs(v.currentTime - t) > thr && t < (v.duration || 1e9)) v.currentTime = t;
       if (playing && v.paused && !v.ended && !m.paused) v.play().catch(() => {});
+      // Master finished but this camera's file is a bit longer: hold it on the master's last frame.
+      if (m.ended && !v.paused) v.pause();
     }
     const g = cur.segs[segIdx].offset + t;
     updateHud(cur.segs[segIdx], t);
@@ -665,6 +698,7 @@ document.addEventListener("keydown", e => {
 });
 function toast(msg, ms = 4500) {
   const t = $("#toast"); t.textContent = msg; t.style.display = "block";
+  t.classList.toggle("link", typeof lastExport !== "undefined" && !!lastExport);
   clearTimeout(toast.h); toast.h = setTimeout(hideToast, ms);
 }
 function hideToast() { $("#toast").style.display = "none"; }
@@ -682,6 +716,7 @@ function refreshTexts() {
       et && t("info_event", { approx: et.approx ? "≈ " : "", time: fmtTime(et.d) })].filter(Boolean).join(" · ");
     updateMarker();
   }
+  if (typeof refreshExportButton === "function") refreshExportButton();
   window.api.setLang(LANG);
 }
 $("#langSel").onchange = e => {
@@ -694,5 +729,6 @@ setLayout(prefLayout, false);
 setHud(hudOn);
 refreshTexts();
 </script>
+<script src="export.js"></script>
 </body>
 </html>

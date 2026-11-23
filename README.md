@@ -8,7 +8,10 @@ A Windows player for the **Dashcam / Sentry Mode** clips a Tesla records on its 
 
 ## Features
 
-- **6 synchronized cameras** (front, rear, pillars, repeaters) with several layouts: *like in the car*, *front + rear*, *one large camera*, *3×2 grid*.
+- **6 synchronized cameras** (front, rear, pillars, repeaters) with several layouts: *3×2 grid* (like in the car), *front + rear*, *one large camera*.
+- **Video export**, depending on the current view:
+  - *one large camera* → that camera saved as **one MP4 for the whole event, with no re-encoding** (original quality, takes seconds, decrypted if the clip was encrypted);
+  - *3×2 grid* or *front + rear* → **one mosaic video** of the 6 cameras laid out as on screen, with date/time and optional telemetry burned in, in Full HD (phone-friendly) or 4K. Encoded inside the app (H.264 via WebCodecs), no extra software.
 - **Encrypted clips**: **local, on-the-fly** decryption — only what you watch gets decrypted, nothing is ever written to disk in clear.
 - **Telemetry** that Tesla embeds in the video: speed, gear, steering angle, accelerator, brake, turn signals, Autosteer / FSD.
 - **Event marker** on the timeline, thumbnails, Saved / Sentry / Recent filters, keyboard shortcuts.
@@ -25,6 +28,7 @@ A Windows player for the **Dashcam / Sentry Mode** clips a Tesla records on its 
 
 - Decryption relies on the **undocumented API** of Tesla's web viewer: a change on Tesla's side may break it.
 - In `EncryptedClips`, `event.json` and `thumb.png` carry no key metadata: only the car can read them. The event moment is then derived from the folder name (within a few seconds) and the thumbnail is taken from the video.
+- Mosaic export re-encodes every frame: it uses the graphics card when available but stays much slower than the one-camera export, especially in 4K.
 - Telemetry only exists on recent clips (software 2025.44.25+, HW3+) and not while the car is parked.
 - The executable is unsigned: Windows SmartScreen asks for confirmation on first launch.
 
@@ -39,6 +43,7 @@ npm install
 npm start          # run in development
 npm run package    # build the Windows app (dist/)
 npm test           # decryption tests (TCV_SAMPLES=path/to/TeslaCam)
+node test/make-synthetic.js   # synthetic 6-camera clips for the export test (needs ffmpeg)
 ```
 
 Shortcuts: `Space` play · `←/→` ±5 s (`Shift` ±1 s) · `1`–`6` camera · `G` layout · `T` telemetry · `E` event · `↑/↓` previous/next event · `F` full screen · `Esc` default layout.
@@ -52,6 +57,7 @@ Shortcuts: `Space` play · `←/→` ±5 s (`Shift` ±1 s) · `1`–`6` camera �
 ## Credits
 
 - Encrypted container format and key request: reverse-engineering work published by [steiner-dominik/tesla-dashcam-decrypt](https://github.com/steiner-dominik/tesla-dashcam-decrypt), [crstian19/tesla-dashcam-decrypt-go](https://github.com/crstian19/tesla-dashcam-decrypt-go) and [pieczorx/tesla-manager](https://github.com/pieczorx/tesla-manager).
+- Video reading, joining and MP4 writing: [Mediabunny](https://mediabunny.dev/) (MPL-2.0).
 - Telemetry format: [`dashcam.proto`](https://github.com/teslamotors/dashcam) published by Tesla.
 
 ## License

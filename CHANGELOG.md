@@ -3,6 +3,26 @@
 Chaque version est décrite en français puis en anglais. Les notes de release GitHub sont générées à partir de ce fichier.
 Each version is described in French, then in English. GitHub release notes are generated from this file.
 
+## [0.5.0] - 2026-11-23
+
+### 🇫🇷 Français
+- **Export vidéo**, selon la vue affichée (bouton à côté de « ⚑ Événement ») :
+  - vue *une caméra en grand* → **💾 Enregistrer la caméra** : la caméra principale en un seul MP4 pour tout l'événement (ou la minute en cours), **sans réencodage** : qualité d'origine, quelques secondes, déchiffrée si le clip l'était. La télémétrie de Tesla reste dans la vidéo ;
+  - vues *grille 3×2* et *avant + arrière* → **🎞️ Exporter la vue** : une seule vidéo avec les 6 caméras disposées comme à l'écran, date et heure incrustées, télémétrie en option, en Full HD (idéal téléphone) ou 4K.
+  - Barre de progression avec temps restant, bouton Arrêter (le fichier incomplet est supprimé), clic sur le message final pour ouvrir le dossier.
+- **La vue « comme dans la voiture » est fusionnée avec la grille 3×2**, qui devient la vue par défaut (c'était la même disposition).
+- Correction : la télémétrie pouvait planter l'affichage en conduite manuelle.
+- Correction : en fin d'événement, les caméras dont la vidéo dure un peu plus que la caméra principale continuaient de tourner en boucle sur la dernière image ; tout s'arrête maintenant, et Lecture relance l'événement depuis le début.
+
+### 🇬🇧 English
+- **Video export**, depending on the current view (button next to “⚑ Event”):
+  - *one large camera* view → **💾 Save this camera**: the main camera as one MP4 for the whole event (or the current minute), **with no re-encoding**: original quality, takes seconds, decrypted if the clip was encrypted. Tesla's telemetry stays in the video;
+  - *3×2 grid* and *front + rear* views → **🎞️ Export this view**: one video with the 6 cameras laid out as on screen, date and time burned in, optional telemetry, in Full HD (phone-friendly) or 4K.
+  - Progress bar with time left, Stop button (the partial file is deleted), click the final message to open the folder.
+- **The “like in the car” view is merged into the 3×2 grid**, now the default view (it was the same layout).
+- Fix: telemetry could break the display while driving manually.
+- Fix: at the end of an event, cameras whose file runs slightly longer than the main camera kept looping on the last frame; everything now stops, and Play starts the event over.
+
 ## [0.4.1] - 2026-11-22
 
 ### 🇫🇷 Français
