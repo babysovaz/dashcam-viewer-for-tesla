@@ -18,9 +18,9 @@ process.stdout.write(`${section || "_Voir / see CHANGELOG.md_"}
 
 ---
 
-**Installation (FR)** — Télécharger le zip ci-dessous, le dézipper, lancer \`Dashcam Viewer for Tesla.exe\`. L'exécutable n'est pas signé : au premier lancement, Windows SmartScreen → *Informations complémentaires* → *Exécuter quand même*.
+**Installation (FR)** — Télécharger **\`Dashcam-Viewer-for-Tesla-…-Setup.exe\`** ci-dessous et le lancer : l'application s'installe pour ton compte (sans droits administrateur), avec un raccourci sur le Bureau et dans le menu Démarrer. Elle se désinstalle depuis *Paramètres → Applications*. Variante sans installation : le **zip**, à dézipper, puis lancer \`Dashcam Viewer for Tesla.exe\`. Le logiciel n'est pas signé : au premier lancement, Windows SmartScreen → *Informations complémentaires* → *Exécuter quand même*.
 
-**Installation (EN)** — Download the zip below, extract it, run \`Dashcam Viewer for Tesla.exe\`. The executable is unsigned: on first launch, Windows SmartScreen → *More info* → *Run anyway*.
+**Installation (EN)** — Download **\`Dashcam-Viewer-for-Tesla-…-Setup.exe\`** below and run it: the app installs for your account (no admin rights), with Desktop and Start menu shortcuts. Uninstall from *Settings → Apps*. No-install alternative: the **zip** — extract it, run \`Dashcam Viewer for Tesla.exe\`. The software is unsigned: on first launch, Windows SmartScreen → *More info* → *Run anyway*.
 
 *Non affilié à Tesla, Inc. · Not affiliated with Tesla, Inc.*
 `);
