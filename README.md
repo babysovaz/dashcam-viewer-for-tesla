@@ -2,6 +2,8 @@
 
 🇬🇧 **English** · 🇫🇷 [Français](README.fr.md)
 
+![Dashcam Viewer for Tesla: 6 synchronized cameras, encrypted clips](docs/banner.png)
+
 A Windows player for the **Dashcam / Sentry Mode** clips a Tesla records on its USB drive: all 6 cameras in sync, just like in the car — including **encrypted clips** (Tesla software 2026.20+).
 
 > Personal project, **not affiliated with Tesla, Inc.** "Tesla", "TeslaCam" and "Sentry Mode" are trademarks of Tesla, Inc.

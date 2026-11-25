@@ -2,6 +2,8 @@
 
 🇬🇧 [English](README.md) · 🇫🇷 **Français**
 
+![Dashcam Viewer for Tesla : 6 caméras synchronisées, clips chiffrés](docs/banner.fr.png)
+
 Lecteur Windows pour les clips **Dashcam / Sentinelle** enregistrés par une Tesla sur clé USB : les 6 caméras synchronisées, comme dans la voiture, y compris les **clips chiffrés** (logiciel Tesla 2026.20+).
 
 > Projet personnel, **non affilié à Tesla, Inc.** « Tesla », « TeslaCam » et « Sentry Mode » sont des marques de Tesla, Inc.
