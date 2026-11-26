@@ -3,6 +3,22 @@
 Chaque version est décrite en français puis en anglais. Les notes de release GitHub sont générées à partir de ce fichier.
 Each version is described in French, then in English. GitHub release notes are generated from this file.
 
+## [0.7.3] - 2026-11-26
+
+### 🇫🇷 Français
+- **Correction : la fin d'un clip pouvait tourner en boucle.** Quand l'image d'une caméra se fige avant la fin de son fichier (Chromium la met alors en pause sans la déclarer terminée), toutes les caméras étaient ramenées à ce moment figé et la même seconde se rejouait sans fin. L'horloge passe maintenant à une caméra qui avance encore ; la caméra figée garde sa dernière image et la lecture va jusqu'au bout.
+- **Correction : le panneau de télémétrie clignotait.** Centré, il changeait de largeur à chaque changement de chiffre (9 → 10 km/h, −3° → −10°…) et se décalait sur le côté plusieurs fois par seconde. Chaque valeur a maintenant une largeur fixe.
+- Le panneau de télémétrie ne cache plus le nom des caméras en vue grille (il est placé juste en dessous et un peu plus compact).
+- La barre de commandes tient de nouveau sur une ligne : noms de disposition raccourcis (« Grille 3×2 », « Avant + arrière », « Une caméra ») et boutons plus compacts.
+- La liste des événements ne déborde plus sur le côté (plus de barre de défilement horizontale ni de vignettes rognées).
+
+### 🇬🇧 English
+- **Fix: the end of a clip could play in a loop.** When one camera's picture froze before the end of its file (Chromium then pauses it without reporting it as ended), every camera was pulled back to that frozen moment and the same second replayed endlessly. The clock now moves to a camera that still plays; the frozen camera keeps its last picture and playback goes to the end.
+- **Fix: the telemetry panel flickered.** Being centred, it changed width whenever a number changed width (9 → 10 km/h, −3° → −10°…) and jumped sideways several times a second. Every value now has a fixed width.
+- The telemetry panel no longer hides the camera names in the grid view (it sits just below them and is a little more compact).
+- The control bar fits on one line again: shorter layout names (“3×2 grid”, “Front + rear”, “One camera”) and more compact buttons.
+- The event list no longer overflows sideways (no more horizontal scroll bar or cropped thumbnails).
+
 ## [0.7.1] - 2026-11-26
 
 ### 🇫🇷 Français

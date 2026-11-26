@@ -1,7 +1,7 @@
 {
   "name": "dashcam-viewer-for-tesla",
   "productName": "Dashcam Viewer for Tesla",
-  "version": "0.7.1",
+  "version": "0.7.3",
   "description": "Lecteur multi-caméras des clips dashcam/Sentinelle Tesla, avec déchiffrement local des clips 2026.20+.",
   "main": "src/main.js",
   "private": true,

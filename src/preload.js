@@ -25,6 +25,8 @@ contextBridge.exposeInMainWorld("api", {
   packClose: (id, ok) => ipcRenderer.invoke("pack-close", id, ok),
   geocode: (lat, lon, lang) => ipcRenderer.invoke("geocode", lat, lon, lang),
   appVersion: () => ipcRenderer.invoke("app-version"),
+  debugEnabled: () => ipcRenderer.invoke("debug-enabled"),
+  debugLog: entry => ipcRenderer.send("debug-log", entry),
   plateStatus: () => ipcRenderer.invoke("plate-status"),
   plateDownload: () => ipcRenderer.invoke("plate-download"),
   plateLoad: () => ipcRenderer.invoke("plate-load"),

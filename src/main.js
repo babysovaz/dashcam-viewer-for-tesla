@@ -18,6 +18,14 @@ protocol.registerSchemesAsPrivileged([{
 app.setPath("userData", path.join(app.getPath("appData"), "TeslaCam Viewer"));
 
 let mainWin = null;
+// Debug log, for chasing playback problems on someone's own clips: on only when a file named
+// debug-on.txt sits next to the app's .exe; written to debug-log.txt in the same folder.
+const appDir = path.dirname(process.execPath);
+const DEBUG = fs.existsSync(path.join(appDir, "debug-on.txt"));
+function dlog(entry) {
+  if (!DEBUG) return;
+  try { fs.appendFileSync(path.join(appDir, "debug-log.txt"), JSON.stringify({ at: new Date().toISOString(), ...entry }) + "\n"); } catch {}
+}
 let root = null;          // folder chosen by the user: nothing outside it is ever served
 let sampleFile = null;
 // UI language, set by the renderer; only used for the few texts drawn by this process.
@@ -73,6 +81,7 @@ async function serve(req) {
     total = inf.plainSize;
   } else return new Response("corrupt", { status: 422 });
 
+  if (DEBUG && /\.mp4$/i.test(p)) dlog({ type: "serve", file: path.basename(p), range: req.headers.get("range"), total, encrypted: !!key });
   const type = MIME[path.extname(p).slice(1).toLowerCase()] || "application/octet-stream";
   const range = req.headers.get("range");
   let start = 0, end = total - 1, partial = false;
@@ -99,7 +108,7 @@ async function serve(req) {
         else { buf = Buffer.alloc(e - pos + 1); fs.readSync(fd, buf, 0, buf.length, pos); }
         pos = e + 1;
         ctrl.enqueue(new Uint8Array(buf.buffer, buf.byteOffset, buf.length));
-      } catch (err) { close(); ctrl.error(err); }
+      } catch (err) { dlog({ type: "serve-error", file: path.basename(p), pos, end, message: err.message }); close(); ctrl.error(err); }
     },
     cancel: close,
   });
@@ -320,6 +329,8 @@ app.whenReady().then(() => {
     finally { clearTimeout(timer); }
   });
   ipcMain.handle("app-version", () => app.getVersion());
+  ipcMain.handle("debug-enabled", () => DEBUG);
+  ipcMain.on("debug-log", (_e, entry) => dlog(entry));
 
   // ---- Licence-plate blurring, fully on this PC. The detector is the MIT-licensed YOLOv9 plate
   // model from github.com/ankandrew/open-image-models: not shipped with the app, downloaded once

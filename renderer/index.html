@@ -19,16 +19,17 @@
   button.primary { background:var(--acc); border-color:var(--acc); font-weight:600; }
   #status { color:var(--dim); font-size:13px; }
   main { display:grid; grid-template-columns:300px 1fr; min-height:0; }
-  aside { border-right:1px solid var(--line); overflow:auto; background:var(--panel); }
-  .filters { position:sticky; top:0; display:flex; gap:4px; padding:8px; background:var(--panel); border-bottom:1px solid var(--line); z-index:1; }
-  .filters button { flex:1; padding:4px 6px; font-size:12px; }
+  aside { border-right:1px solid var(--line); overflow-y:auto; overflow-x:hidden; background:var(--panel); min-width:0; }
+  .filters { position:sticky; top:0; display:flex; gap:3px; padding:8px 6px; background:var(--panel); border-bottom:1px solid var(--line); z-index:1; }
+  .filters button { flex:auto; min-width:0; padding:4px 3px; font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .filters button.on { background:var(--sel); border-color:var(--acc); }
   .day { padding:10px 12px 4px; color:var(--dim); font-size:12px; text-transform:uppercase; letter-spacing:.6px; }
   .ev { display:grid; grid-template-columns:72px 1fr; gap:10px; padding:8px 12px; cursor:pointer; border-left:3px solid transparent; }
   .ev:hover { background:#1b1e23; }
   .ev.active { background:var(--sel); border-left-color:var(--acc); }
   .ev img, .ev .noimg { width:72px; height:46px; object-fit:cover; border-radius:4px; background:#24272d; display:flex; align-items:center; justify-content:center; font-size:18px; }
-  .ev .t { font-weight:600; }
+  .ev > div { min-width:0; }
+  .ev .t { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .ev .s { color:var(--dim); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .ev.locked { opacity:.55; }
   .tag { font-size:10px; padding:1px 5px; border-radius:3px; background:#2a2e35; color:var(--dim); margin-left:4px; }
@@ -41,21 +42,25 @@
   #stage:not(.focus) [data-cam=front]{grid-area:f} #stage:not(.focus) [data-cam=back]{grid-area:b}
   #stage:not(.focus) [data-cam=left_pillar]{grid-area:lp} #stage:not(.focus) [data-cam=right_pillar]{grid-area:rp}
   #stage:not(.focus) [data-cam=left_repeater]{grid-area:lr} #stage:not(.focus) [data-cam=right_repeater]{grid-area:rr}
-  #hud { position:absolute; top:10px; left:50%; transform:translateX(-50%); z-index:3; pointer-events:none; display:flex; align-items:center; gap:14px;
-         background:rgba(10,11,13,.72); backdrop-filter:blur(4px); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:8px 16px; }
+  /* Below the row of camera labels (top: 4px in each tile), so it never hides them. */
+  #hud { position:absolute; top:30px; left:50%; transform:translateX(-50%); z-index:3; pointer-events:none; display:flex; align-items:center; gap:10px;
+         background:rgba(10,11,13,.72); backdrop-filter:blur(4px); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:5px 12px; white-space:nowrap; }
   #hudBtn.on { border-color:var(--acc); }
   #hud .gear span { font-weight:700; color:#555; margin:0 2px; font-size:14px; } #hud .gear span.on { color:#fff; }
-  #hud .spd { text-align:center; line-height:1; } #hud .spd b { font-size:30px; font-variant-numeric:tabular-nums; display:block; } #hud .spd small { color:var(--dim); font-size:10px; }
-  #hWheel { width:30px; height:30px; color:#ddd; transition:transform .08s linear; } #hSteer { color:var(--dim); font-size:11px; min-width:34px; font-variant-numeric:tabular-nums; }
+  #hud .spd { text-align:center; line-height:1; } #hud .spd b { font-size:26px; font-variant-numeric:tabular-nums; display:block; } #hud .spd small { color:var(--dim); font-size:10px; }
+  #hWheel { width:30px; height:30px; color:#ddd; transition:transform .08s linear; } #hSteer { color:var(--dim); font-size:11px; min-width:48px; font-variant-numeric:tabular-nums; }
   #hud .ped { display:flex; flex-direction:column; align-items:center; gap:2px; font-size:9px; color:var(--dim); }
   #hud .bar { width:10px; height:30px; background:#2a2d33; border-radius:3px; position:relative; overflow:hidden; } #hud .bar i { position:absolute; bottom:0; left:0; right:0; background:#3fb950; }
   #hud .pill { font-size:11px; font-weight:700; padding:3px 7px; border-radius:6px; background:#2a2d33; color:#555; }
   #hBrake.on { background:#c62828; color:#fff; } #hAp.on { background:#1565c0; color:#fff; }
-  #hud .gf { text-align:center; line-height:1; min-width:38px; } #hud .gf b { font-size:16px; font-variant-numeric:tabular-nums; display:block; } #hud .gf small { color:var(--dim); font-size:9px; }
+  /* Fixed widths: the panel is centred, so any width change made it jump sideways (flicker). */
+  #hud .spd { min-width:60px; } #hSteer { text-align:right; }
+  #hud .gf { text-align:center; line-height:1; min-width:44px; }
+  #hAp { min-width:112px; text-align:center; } #hBrake { min-width:52px; text-align:center; } #hud .gf b { font-size:16px; font-variant-numeric:tabular-nums; display:block; } #hud .gf small { color:var(--dim); font-size:9px; }
   #hud .gf.hi b { color:#ffcc00; }
   #hud .blink { font-size:18px; color:#333; } #hud .blink.on { color:#3fb950; animation:blk .7s steps(1) infinite; }
   @keyframes blk { 50% { opacity:.15; } }
-  #hudNone { position:absolute; top:10px; left:50%; transform:translateX(-50%); z-index:3; pointer-events:none; font-size:11px; color:var(--dim); background:rgba(10,11,13,.7); padding:4px 10px; border-radius:8px; }
+  #hudNone { position:absolute; top:30px; left:50%; transform:translateX(-50%); z-index:3; pointer-events:none; font-size:11px; color:var(--dim); background:rgba(10,11,13,.7); padding:4px 10px; border-radius:8px; }
   .ev .noimg.unl { font-size:20px; }
   #stage.focus { grid-template-columns:repeat(5,1fr); grid-template-rows:1fr 18%; }
   #stage.focus .cam.main { grid-column:1 / -1; grid-row:1; }
@@ -74,7 +79,8 @@
   #moments { position:absolute; left:0; right:0; top:-11px; height:12px; pointer-events:none; }
   #moments .mo { position:absolute; top:0; transform:translateX(-50%); font-size:11px; line-height:12px; cursor:pointer; pointer-events:auto; filter:drop-shadow(0 0 2px #000); }
   #moments .mo:hover { transform:translateX(-50%) scale(1.4); }
-  #row { display:flex; align-items:center; gap:10px; margin-top:6px; flex-wrap:wrap; }
+  #row { display:flex; align-items:center; gap:8px; margin-top:6px; flex-wrap:wrap; }
+  #row button, #row select { padding:5px 10px; }
   #clock { font-variant-numeric:tabular-nums; font-size:15px; font-weight:600; min-width:80px; }
   #rel { color:var(--dim); font-variant-numeric:tabular-nums; }
   #info { margin-left:auto; color:var(--dim); font-size:12px; text-align:right; }
@@ -228,6 +234,25 @@ let playing = false, rate = 1, loadToken = 0, seeking = false;
 const vids = {};      // cam id -> <video>
 const urls = {};      // cam id -> current object URL
 
+// ---------- Debug log (only when the app's folder holds a file named debug-on.txt) ----------
+let debugOn = false;
+window.api.debugEnabled().then(on => { debugOn = on; if (on) dbg("start", { ua: navigator.userAgent }); });
+function camState(id) {
+  const v = vids[id];
+  if (!v) return null;
+  const b = v.buffered, ranges = [];
+  for (let i = 0; i < b.length; i++) ranges.push([+b.start(i).toFixed(2), +b.end(i).toFixed(2)]);
+  return { t: +v.currentTime.toFixed(3), dur: +(v.duration || 0).toFixed(2), rs: v.readyState, ns: v.networkState, paused: v.paused, ended: v.ended,
+    err: v.error && `${v.error.code}:${v.error.message}`, buf: ranges };
+}
+function dbg(type, data) { if (debugOn) window.api.debugLog({ type, seg: cur && segIdx >= 0 ? cur.segs[segIdx].ts : null, ...data }); }
+setInterval(() => {
+  if (!debugOn || !cur || !playing) return;
+  const st = {};
+  for (const c of CAMS) if (urls[c.id]) st[c.id] = camState(c.id);
+  dbg("state", { master: masterId(), cams: st });
+}, 1000);
+
 // ---------- Stage ----------
 const stage = $("#stage");
 for (const c of CAMS) {
@@ -239,10 +264,17 @@ for (const c of CAMS) {
   stage.appendChild(d);
   const v = d.querySelector("video");
   vids[c.id] = v;
-  v.addEventListener("ended", () => { if (c.id === masterId()) nextSegment(); });
+  v.addEventListener("ended", () => { dbg("ended", { cam: c.id, master: masterId() }); if (c.id === masterId()) nextSegment(); });
+  for (const ev of ["waiting", "stalled", "error", "emptied", "abort", "suspend"]) v.addEventListener(ev, () => dbg(ev, { cam: c.id, state: camState(c.id) }));
 }
 
+// Camera whose clock drives the others. Normally the main one; if it stops advancing while
+// playing (a clip whose picture freezes part-way), the clock is handed to a camera that still
+// advances, for the rest of that clip — otherwise every camera was pulled back to the frozen
+// time and the end of the clip played in a loop.
+let clockCam = null;
 function masterId() {
+  if (clockCam && urls[clockCam]) return clockCam;
   if (urls[mainCam]) return mainCam;
   for (const c of ["front", ...CAMS.map(x => x.id)]) if (urls[c]) return c;
   return mainCam;
@@ -626,6 +658,7 @@ function segAt(g) {
 async function loadSegment(i, tIn) {
   const token = ++loadToken;
   segIdx = i;
+  clockCam = null; stall.since = 0;
   const seg = cur.segs[i];
   CAMS.forEach(c => {
     const v = vids[c.id];
@@ -673,14 +706,36 @@ function setRate(r) {
 }
 
 // Keep every camera locked on the master camera's clock.
+const stall = { t: -1, since: 0 };
+const lastSync = {};                    // cam id -> time of the last forced re-sync
+const lastPos = {};                     // cam id -> [currentTime, when it last changed]
 function tick() {
   if (cur && segIdx >= 0) {
-    const mid = masterId(), m = vids[mid], t = m.currentTime;
+    const now = performance.now();
+    for (const c of CAMS) if (urls[c.id]) { const p = lastPos[c.id], ct = vids[c.id].currentTime; if (!p || p[0] !== ct) lastPos[c.id] = [ct, now]; }
+    let mid = masterId(), m = vids[mid];
+    // Watchdog: the app is playing but the clock camera has not moved for 0.7 s while others do.
+    // Chromium pauses a video by itself when its data runs out before its stated duration, so
+    // the app's own "playing" state is what counts here, not the video's.
+    if (playing && !m.ended && !seeking && m.currentTime === stall.t) {
+      if (!stall.since) stall.since = now;
+      else if (now - stall.since > 700) {
+        const alive = CAMS.map(c => c.id).filter(id => id !== mid && urls[id] && !vids[id].ended && vids[id].readyState >= 2 && now - (lastPos[id] || [0, 0])[1] < 300);
+        const next = alive.includes("front") ? "front" : alive[0];
+        if (next) { dbg("clock", { from: mid, to: next, at: m.currentTime, state: camState(mid) }); clockCam = next; mid = next; m = vids[mid]; }
+        stall.since = 0;
+      }
+    } else stall.since = 0;
+    stall.t = m.currentTime;
+    const t = m.currentTime;
     const thr = 0.08 + 0.06 * rate;
     for (const c of CAMS) {
       if (c.id === mid || !urls[c.id]) continue;
       const v = vids[c.id];
-      if (v.readyState >= 1 && Math.abs(v.currentTime - t) > thr && t < (v.duration || 1e9)) v.currentTime = t;
+      // Re-sync at most once a second per camera: a camera that cannot keep up is not hammered.
+      if (v.readyState >= 1 && Math.abs(v.currentTime - t) > thr && t < (v.duration || 1e9) && now - (lastSync[c.id] || 0) > 1000) {
+        lastSync[c.id] = now; v.currentTime = t;
+      }
       if (playing && v.paused && !v.ended && !m.paused) v.play().catch(() => {});
       // Master finished but this camera's file is a bit longer: hold it on the master's last frame.
       if (m.ended && !v.paused) v.pause();
