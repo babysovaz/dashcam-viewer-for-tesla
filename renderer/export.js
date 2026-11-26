@@ -179,18 +179,20 @@ function drawLabel(g, text, x, y, size, align = "left") {
 }
 
 // ---------- Licence plates: found by a local AI model, pixelated before encoding ----------
-// The model sees 640×640 pictures. Tesla's front camera is 2896 px wide, where a plate shrinks
-// to ~15 px at that scale and is often missed, so its road band is read as three overlapping
-// tiles; the other cameras (1448 px) are read whole. Measured on real clips (a car park, front
-// camera, one frame every 2 s): this finds up to three times more plates than the whole frame,
-// with no false alarm on plate-free frames. The confidence threshold is low (0.15, in main.js)
+// The model sees 640×640 pictures. Tesla's front camera is 2896 px wide, where a distant plate
+// shrinks to ~15 px at that scale and is often missed, so its road band (30–70 % of the height)
+// is also read as three overlapping tiles; the whole frame is read too, for the big plates of
+// cars parked right in front, which sit below that band (v0.7.0 missed them). The other cameras
+// (1448 px) are read whole. Measured on real clips (a car park, front camera, one frame every
+// 2 s): the tiles find up to three times more plates than the whole frame alone, with no false
+// alarm on plate-free frames. The confidence threshold is low (0.15, in main.js)
 // on purpose: an extra blurred patch costs nothing, a missed plate does. Detection runs every
 // few frames and each box covers the plate's previous and current position, with a margin.
 const PLATE_EVERY = 4;                       // frames between detections (~9 per second at 36 fps)
 function plateTiles(w, h) {
   if (w <= 1600) return [[0, 0, w, h]];
   const tw = Math.round(w * 0.4), th = Math.min(h, Math.round(tw * 938 / 1448)), y0 = Math.round(h * 0.3);
-  return [0, 0.3, 0.6].map(f => [Math.round(w * f), y0, tw, th]);
+  return [[0, 0, w, h], ...[0, 0.3, 0.6].map(f => [Math.round(w * f), y0, tw, th])];
 }
 let detCanvas = null;
 /** Plate boxes [x, y, w, h] in the frame's own pixels. */

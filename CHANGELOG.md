@@ -3,6 +3,14 @@
 Chaque version est décrite en français puis en anglais. Les notes de release GitHub sont générées à partir de ce fichier.
 Each version is described in French, then in English. GitHub release notes are generated from this file.
 
+## [0.7.1] - 2026-11-26
+
+### 🇫🇷 Français
+- **Correction du floutage des plaques** : sur la caméra avant, seule la bande centrale de l'image (30 à 70 % de la hauteur) était analysée ; les plaques des voitures garées juste devant, plus bas dans l'image, n'étaient pas floutées. L'image entière est maintenant analysée en plus des trois tuiles. Un test vérifie que chaque pixel de chaque caméra est analysé.
+
+### 🇬🇧 English
+- **Plate blurring fix**: on the front camera, only the middle band of the picture (30 to 70 % of its height) was analysed; the plates of cars parked right in front, lower in the picture, were not blurred. The whole picture is now analysed as well as the three tiles. A test checks that every pixel of every camera is analysed.
+
 ## [0.7.0] - 2026-11-26
 
 ### 🇫🇷 Français

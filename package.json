@@ -1,13 +1,13 @@
 {
   "name": "dashcam-viewer-for-tesla",
   "productName": "Dashcam Viewer for Tesla",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Lecteur multi-caméras des clips dashcam/Sentinelle Tesla, avec déchiffrement local des clips 2026.20+.",
   "main": "src/main.js",
   "private": true,
   "scripts": {
     "start": "electron .",
-    "test": "node test/container.test.js && node test/analysis.test.js && node test/summary.test.js",
+    "test": "node test/container.test.js && node test/analysis.test.js && node test/summary.test.js && node test/plates.test.js",
     "package": "electron-packager . \"Dashcam Viewer for Tesla\" --platform=win32 --arch=x64 --out=dist --overwrite --icon=build/icon.ico --ignore=\"^/test\" --ignore=\"^/dist\" --ignore=\"^/scripts\" --ignore=\"^/docs\" --ignore=\"^/\\.github\" --ignore=\"^/samples\" --ignore=\"^/build\" --ignore=\"^/node_modules/onnxruntime-node/bin/napi-v6/(darwin|linux|win32/arm64)\" --asar.unpackDir=node_modules/onnxruntime-node/bin --ignore=/node_modules/mediabunny/src --ignore=/node_modules/mediabunny/dist/modules --ignore=mediabunny.d.ts --ignore=bundles/mediabunny.mjs --ignore=bundles/mediabunny.cjs --ignore=bundles/mediabunny.min.mjs --ignore=bundles/mediabunny.node --ignore=bundles/mediabunny.worker",
     "installer": "electron-builder --win nsis --x64 --prepackaged \"dist/Dashcam Viewer for Tesla-win32-x64\" --publish never"
   },
