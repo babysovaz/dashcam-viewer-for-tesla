@@ -345,9 +345,11 @@ function updateHud(seg, time) {   // not "t": that is the translation function
   $("#hBlinkR").classList.toggle("on", d.blinkR);
   $("#hAp").textContent = apName(d.ap) || t("manual");
   $("#hAp").classList.toggle("on", !!apName(d.ap));
+  // The g box stays put for the whole clip: a few frames carry no accelerometer data, and
+  // hiding the box on those made the centred panel jump (the flicker reported on v0.7.1).
   const gf = $("#hGf");
-  gf.hidden = !Number.isFinite(d.g);
-  if (!gf.hidden) { $("#hG").textContent = fmtG(d.g); gf.classList.toggle("hi", d.g >= 0.4); }
+  gf.hidden = !seg.hasG;
+  if (seg.hasG && Number.isFinite(d.g)) { $("#hG").textContent = fmtG(d.g); gf.classList.toggle("hi", d.g >= 0.4); }
 }
 function loadTelemetry(seg) {
   // One load per clip, shared by the HUD, the moments and the export (they may ask at once).
@@ -361,7 +363,7 @@ async function readTelemetry(seg) {
   // Pedal position may come as 0–1 or 0–100 depending on firmware: scale to percent.
   const max = seg.tel.reduce((m, x) => Math.max(m, x.accel), 0);
   seg.accScale = max > 1.5 ? 1 : 100;
-  Analysis.addGForce(seg.tel);
+  seg.hasG = Analysis.addGForce(seg.tel);
 }
 /** Telemetry of a whole event, as one list in event time (seconds from the event start). */
 function eventSamples(ev, segs = ev.segs) {
@@ -717,12 +719,13 @@ function tick() {
     // Watchdog: the app is playing but the clock camera has not moved for 0.7 s while others do.
     // Chromium pauses a video by itself when its data runs out before its stated duration, so
     // the app's own "playing" state is what counts here, not the video's.
-    if (playing && !m.ended && !seeking && m.currentTime === stall.t) {
+    // A camera still loading (not paused, little data yet) is waiting, not frozen.
+    if (playing && !m.ended && !seeking && m.currentTime === stall.t && (m.paused || m.readyState >= 2)) {
       if (!stall.since) stall.since = now;
       else if (now - stall.since > 700) {
         const alive = CAMS.map(c => c.id).filter(id => id !== mid && urls[id] && !vids[id].ended && vids[id].readyState >= 2 && now - (lastPos[id] || [0, 0])[1] < 300);
         const next = alive.includes("front") ? "front" : alive[0];
-        if (next) { dbg("clock", { from: mid, to: next, at: m.currentTime, state: camState(mid) }); clockCam = next; mid = next; m = vids[mid]; }
+        if (next) { dbg("clock", { from: mid, to: next, frozenAt: m.currentTime, state: camState(mid) }); clockCam = next; mid = next; m = vids[mid]; }
         stall.since = 0;
       }
     } else stall.since = 0;
