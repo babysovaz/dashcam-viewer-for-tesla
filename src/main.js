@@ -275,6 +275,15 @@ app.whenReady().then(() => {
       return rel(pack, dest);
     } finally { win.destroy(); }
   });
+  // A small text file in the package (the factual summary), fingerprinted like the rest.
+  ipcMain.handle("pack-text", async (_e, id, name, text) => {
+    const pack = packs.get(id);
+    if (!pack) throw new Error("closed");
+    const dest = path.join(pack.dir, String(name || "summary.txt").replace(/[\\/:*?"<>|]/g, "_"));
+    fs.writeFileSync(dest, "\ufeff" + String(text), "utf8");   // BOM: Notepad shows the accents right
+    await hashInto(pack, dest);
+    return rel(pack, dest);
+  });
   // SHA256SUMS.txt, in the usual "hash *file" format (checkable with sha256sum -c or certutil).
   ipcMain.handle("pack-sums", (_e, id) => {
     const pack = packs.get(id);
@@ -311,6 +320,65 @@ app.whenReady().then(() => {
     finally { clearTimeout(timer); }
   });
   ipcMain.handle("app-version", () => app.getVersion());
+
+  // ---- Licence-plate blurring, fully on this PC. The detector is the MIT-licensed YOLOv9 plate
+  // model from github.com/ankandrew/open-image-models: not shipped with the app, downloaded once
+  // on first use (8 MB) and checked against its SHA-256. Frames never leave the PC: the renderer
+  // sends one 640×640 picture at a time and gets the plate boxes back.
+  const PLATE_MODEL = {
+    file: "yolo-v9-t-640-license-plates-end2end.onnx",
+    url: "https://github.com/ankandrew/open-image-models/releases/download/assets/yolo-v9-t-640-license-plates-end2end.onnx",
+    sha256: "c3c1026ca7d0585dd88084d68182dd897113712fa734ae1557ca70174440c076",
+  };
+  const modelPath = () => path.join(app.getPath("userData"), "models", PLATE_MODEL.file);
+  const sha256File = p => crypto.createHash("sha256").update(fs.readFileSync(p)).digest("hex");
+  let plateSession = null, plateEp = null, plateOrt = null;
+  ipcMain.handle("plate-status", () => {
+    let ready = false;
+    try { ready = fs.existsSync(modelPath()) && sha256File(modelPath()) === PLATE_MODEL.sha256; } catch {}
+    return { ready, loaded: !!plateSession, ep: plateEp };
+  });
+  ipcMain.handle("plate-download", async () => {
+    try {
+      const r = await net.fetch(PLATE_MODEL.url);
+      if (!r.ok) return { error: "status", status: r.status };
+      const buf = Buffer.from(await r.arrayBuffer());
+      if (crypto.createHash("sha256").update(buf).digest("hex") !== PLATE_MODEL.sha256) return { error: "checksum" };
+      fs.mkdirSync(path.dirname(modelPath()), { recursive: true });
+      fs.writeFileSync(modelPath(), buf);
+      return { ok: true };
+    } catch (e) { return { error: "network", message: e.message }; }
+  });
+  ipcMain.handle("plate-load", async () => {
+    if (plateSession) return { ok: true, ep: plateEp };
+    if (process.env.TCV_TEST_PLATES) { plateEp = "mock"; plateSession = "mock"; return { ok: true, ep: plateEp }; }
+    let ort;
+    try { ort = require("onnxruntime-node"); } catch (e) { return { error: "runtime", message: e.message }; }
+    // The graphics card through DirectML when Windows offers it, else the processor.
+    const tries = process.platform === "win32" ? [["dml"], ["cpu"]] : [["cpu"]];
+    for (const executionProviders of tries) {
+      try {
+        plateSession = await ort.InferenceSession.create(modelPath(), { executionProviders, graphOptimizationLevel: "all" });
+        plateEp = executionProviders[0];
+        plateOrt = ort;
+        return { ok: true, ep: plateEp };
+      } catch (e) { if (executionProviders[0] === "cpu") return { error: "load", message: e.message }; }
+    }
+  });
+  // One 640×640 RGBA picture in, plate boxes out ([x1, y1, x2, y2, score] in that picture). The
+  // threshold is low on purpose: an extra blurred patch costs nothing, a missed plate does.
+  ipcMain.handle("plate-detect", async (_e, rgba) => {
+    if (!plateSession) throw new Error("model not loaded");
+    if (process.env.TCV_TEST_PLATES) return JSON.parse(process.env.TCV_TEST_PLATES);
+    const n = 640 * 640, px = new Uint8Array(rgba.buffer || rgba, rgba.byteOffset || 0, n * 4);
+    const x = new Float32Array(3 * n);
+    for (let i = 0; i < n; i++) { x[i] = px[4 * i] / 255; x[n + i] = px[4 * i + 1] / 255; x[2 * n + i] = px[4 * i + 2] / 255; }
+    const out = await plateSession.run({ [plateSession.inputNames[0]]: new plateOrt.Tensor("float32", x, [1, 3, 640, 640]) });
+    const o = out[plateSession.outputNames[0]], d = o.data, rows = o.dims[0], cols = o.dims[1];
+    const boxes = [];
+    for (let r = 0; r < rows; r++) { const b = r * cols; if (d[b + 6] >= 0.15) boxes.push([d[b + 1], d[b + 2], d[b + 3], d[b + 4], d[b + 6]]); }
+    return boxes;
+  });
   auth.onChange(s => mainWin && mainWin.webContents.send("auth-changed", s));
 
   createWindow();

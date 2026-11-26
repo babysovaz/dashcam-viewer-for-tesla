@@ -178,6 +178,71 @@ function drawLabel(g, text, x, y, size, align = "left") {
   g.restore();
 }
 
+// ---------- Licence plates: found by a local AI model, pixelated before encoding ----------
+// The model sees 640×640 pictures. Tesla's front camera is 2896 px wide, where a plate shrinks
+// to ~15 px at that scale and is often missed, so its road band is read as three overlapping
+// tiles; the other cameras (1448 px) are read whole. Measured on real clips (a car park, front
+// camera, one frame every 2 s): this finds up to three times more plates than the whole frame,
+// with no false alarm on plate-free frames. The confidence threshold is low (0.15, in main.js)
+// on purpose: an extra blurred patch costs nothing, a missed plate does. Detection runs every
+// few frames and each box covers the plate's previous and current position, with a margin.
+const PLATE_EVERY = 4;                       // frames between detections (~9 per second at 36 fps)
+function plateTiles(w, h) {
+  if (w <= 1600) return [[0, 0, w, h]];
+  const tw = Math.round(w * 0.4), th = Math.min(h, Math.round(tw * 938 / 1448)), y0 = Math.round(h * 0.3);
+  return [0, 0.3, 0.6].map(f => [Math.round(w * f), y0, tw, th]);
+}
+let detCanvas = null;
+/** Plate boxes [x, y, w, h] in the frame's own pixels. */
+async function detectPlates(frame) {
+  const W = frame.displayWidth, H = frame.displayHeight, S = 640;
+  if (!detCanvas) { detCanvas = document.createElement("canvas"); detCanvas.width = detCanvas.height = S; }
+  const c = detCanvas.getContext("2d", { willReadFrequently: true });
+  const found = [];
+  for (const [tx, ty, tw, th] of plateTiles(W, H)) {
+    const r = Math.min(S / tw, S / th), nw = Math.round(tw * r), nh = Math.round(th * r), dw = (S - nw) / 2, dh = (S - nh) / 2;
+    c.fillStyle = "rgb(114,114,114)"; c.fillRect(0, 0, S, S);   // the letterbox grey the model was trained with
+    frame.draw(c, tx, ty, tw, th, dw, dh, nw, nh);
+    const boxes = await window.api.plateDetect(c.getImageData(0, 0, S, S).data);
+    for (const [x1, y1, x2, y2] of boxes) found.push([tx + (x1 - dw) / r, ty + (y1 - dh) / r, (x2 - x1) / r, (y2 - y1) / r]);
+  }
+  return found;
+}
+/** Wider and taller than the plate: it moves between two detections and must stay covered. */
+function grow([x, y, w, h], W, H) {
+  const nx = Math.max(0, x - w * 0.35), ny = Math.max(0, y - h * 0.6);
+  return [nx, ny, Math.min(W, x + w * 1.35) - nx, Math.min(H, y + h * 1.6) - ny];
+}
+let pixCanvas = null;
+/**
+ * Pixelate a rectangle of the output canvas. The rectangle is the grown box (~1.7 × the plate's
+ * width, 2.2 × its height), cut into 2 rows of up to 10 blocks: a block spans about two
+ * characters, so nothing stays readable.
+ */
+function pixelate(g, x, y, w, h) {
+  if (w < 2 || h < 2) return;
+  if (!pixCanvas) pixCanvas = document.createElement("canvas");
+  pixCanvas.width = Math.max(2, Math.min(10, Math.round((w / h) * 2)));
+  pixCanvas.height = 2;
+  const p = pixCanvas.getContext("2d");
+  p.drawImage(g.canvas, x, y, w, h, 0, 0, pixCanvas.width, pixCanvas.height);
+  g.save(); g.imageSmoothingEnabled = false;
+  g.drawImage(pixCanvas, 0, 0, pixCanvas.width, pixCanvas.height, x, y, w, h);
+  g.restore();
+}
+/** Download (once) and load the plate model, reporting progress in the export window. */
+async function preparePlates(step) {
+  const st = await window.api.plateStatus();
+  if (!st.ready && !st.loaded) {
+    step(t("st_model"), 0, 0.02);
+    const r = await window.api.plateDownload();
+    if (r.error) throw new Error(t("plate_dl_failed", { why: r.status || r.message || r.error }));
+  }
+  const l = await window.api.plateLoad();
+  if (l.error) throw new Error(t("plate_load_failed", { why: l.message || l.error }));
+  return l.ep;
+}
+
 // ---------- Information band under the video (insurance mode) ----------
 const gpsOk = d => d && Number.isFinite(d.lat) && Number.isFinite(d.lon) && (Math.abs(d.lat) > 1e-3 || Math.abs(d.lon) > 1e-3);
 const fmtGps = d => `${Math.abs(d.lat).toFixed(5)}° ${d.lat >= 0 ? "N" : "S"}, ${Math.abs(d.lon).toFixed(5)}° ${d.lon >= 0 ? "E" : "W"}`;
@@ -239,7 +304,7 @@ function frameStepper(track) {
 /**
  * Compose the cameras of `layout` and encode them in H.264 (fallbacks: VP9, AV1).
  * opts: hud (telemetry over the front camera), speed (show it), band (insurance information
- * band under the video: { place }).
+ * band under the video: { place }), blur (pixelate licence plates found by the local model).
  */
 async function encodeMosaic(layout, width, opts, segs, target, job) {
   const geo = exportGeometry(layout, width);
@@ -285,14 +350,24 @@ async function encodeMosaic(layout, width, opts, segs, target, job) {
       if (withHud || bandH) await loadTelemetry(p.seg);
       const n = Math.max(1, Math.floor(p.dur * fps));
       const steps = geo.tiles.map(tl => p.cams[tl.cam] ? frameStepper(p.cams[tl.cam].track) : null);
+      const plates = geo.tiles.map(() => ({ prev: [], cur: [] }));   // per tile, in source pixels
       try {
        for (let k = 0; k < n; k++) {
         if (job.cancelled) throw new Error("cancelled");
         const frames = await Promise.all(geo.tiles.map((tl, i) => steps[i] ? steps[i].at(p.cams[tl.cam].t0 + k / fps) : null));
         g.fillStyle = "#000"; g.fillRect(0, 0, geo.W, outH);
+        if (opts.blur && k % PLATE_EVERY === 0)
+          for (let i = 0; i < geo.tiles.length; i++) if (frames[i]) { plates[i].prev = plates[i].cur; plates[i].cur = await detectPlates(frames[i]); job.plates = (job.plates || 0) + plates[i].cur.length; window.__plates = job.plates; }
         geo.tiles.forEach((tl, i) => {
           const f = frames[i];
           if (f) f.draw(g, tl.x, tl.y, tl.w, tl.h);
+          if (f && opts.blur) {
+            const sx = tl.w / f.displayWidth, sy = tl.h / f.displayHeight;
+            for (const b of [...plates[i].prev, ...plates[i].cur]) {
+              const [x, y, w, h] = grow(b, f.displayWidth, f.displayHeight);
+              pixelate(g, tl.x + x * sx, tl.y + y * sy, w * sx, h * sy);
+            }
+          }
           if (label) drawLabel(g, t("cam_" + tl.cam) + (f ? "" : " — " + t("no_image")), tl.x + 6, tl.y + 5, labelSize);
         });
         const tIn = k / fps;
@@ -359,6 +434,40 @@ async function resolvePlace(ev, samples, at, allowOnline) {
   return place;
 }
 
+/**
+ * Blanks for the factual summary (renderer/summary.js), formatted for the current language.
+ * `show.place` / `show.speed` false → those blanks stay empty, so their sentences disappear.
+ */
+function summaryData(ev, segs, moment, place, show) {
+  const samples = eventSamples(ev, segs);
+  const st = Analysis.summarize(samples, moment.at);
+  const d = st && st.gap <= 2 ? st.near : null;
+  const gps = show.place && place && place.gps ? place.gps : null;
+  const endOff = segs[segs.length - 1].offset + segs[segs.length - 1].dur;
+  const near = (ev.moments || []).filter(m => m.t >= segs[0].offset && m.t <= endOff && Math.abs(m.t - moment.at) <= 15);
+  const timeOf = t => fmtTime(new Date(ev.start.getTime() + t * 1000));
+  return {
+    date: moment.date.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
+    time: fmtTime(moment.date),
+    reason: ev.meta && ev.meta.reason ? reasonName(ev.meta.reason) : null,
+    street: show.place && place ? place.street : null,
+    city: show.place && place ? place.city : null,
+    gps: gps ? fmtGps(gps) : null,
+    heading: gps && Number.isFinite(gps.heading) ? Math.round(((gps.heading % 360) + 360) % 360) : null,
+    hasTelemetry: !!d,
+    speed: d && show.speed ? Math.round(Math.abs(d.speed) * 3.6) : null,
+    gear: d ? t("gear_" + d.gear) : null,
+    ap: d ? apName(d.ap) : null,
+    manual: !!d && !apName(d.ap),
+    brake: !!d && d.brake,
+    blink: d ? (d.blinkL && d.blinkR ? t("blink_lr") : d.blinkL ? t("blink_l") : d.blinkR ? t("blink_r") : null) : null,
+    maxSpeed: d && show.speed ? Math.round(st.maxSpeed * 3.6) : null,
+    peakG: d && st.peakG !== null ? fmtG(st.peakG) : null,
+    moments: near.map(m => ({ kind: m.kind, time: timeOf(m.t), g: m.kind === "apOff" ? null : fmtG(m.value), ap: m.kind === "apOff" ? apName(m.value) : null })),
+  };
+}
+const summaryLines = (ev, segs, moment, place, show) => Summary.buildSummary(I18N[LANG], summaryData(ev, segs, moment, place, show));
+
 const esc = v => String(v ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const fmtSize = n => n >= 1048576 ? `${(n / 1048576).toFixed(1)} ${t("unit_mb")}` : `${Math.max(1, Math.round(n / 1024))} ${t("unit_kb")}`;
 const fmtWhen = d => d.toLocaleString(locale(), { weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -367,7 +476,7 @@ const fmtWhen = d => d.toLocaleString(locale(), { weekday: "long", day: "numeric
 function reportHtml(r) {
   const row = (k, v) => v === null || v === undefined || v === "" ? "" : `<tr><th>${esc(k)}</th><td>${v}</td></tr>`;
   const st = r.state, d = st && st.gap <= 2 ? st.near : null;
-  const gps = r.place.gps;
+  const gps = r.show.place ? r.place.gps : null;
   const osm = gps ? `https://www.openstreetmap.org/?mlat=${gps.lat.toFixed(6)}&mlon=${gps.lon.toFixed(6)}#map=18/${gps.lat.toFixed(6)}/${gps.lon.toFixed(6)}` : null;
   const srcTxt = { car: t("rep_src_car"), osm: t("rep_src_osm") }[r.place.source] || (r.place.onlineFailed ? t("rep_src_failed") : t("rep_src_none"));
   const blink = d ? [d.blinkL && t("rep_left"), d.blinkR && t("rep_right")].filter(Boolean).join(", ") || t("rep_none") : null;
@@ -392,6 +501,9 @@ function reportHtml(r) {
 <h1>${esc(t("rep_title"))}</h1>
 <div class="sub">${esc(t("rep_generated", { when: fmtWhen(r.generated), ver: r.version }))}</div>
 
+<h2>${esc(t("rep_h_summary"))}</h2>
+${r.summary.map(l => `<p style="margin:0 0 1.6mm">${esc(l)}</p>`).join("")}
+
 <h2>${esc(t("rep_h_event"))}</h2>
 <table>
 ${row(t("rep_type"), esc(r.ev.meta && r.ev.meta.reason ? reasonName(r.ev.meta.reason) : typeName(r.ev.type)))}
@@ -401,23 +513,23 @@ ${row(t("rep_encrypted"), esc(t(r.ev.encrypted ? "rep_yes_enc" : "rep_no_enc")))
 </table>
 
 <h2>${esc(t("rep_h_place"))}</h2>
-<table>
+${!r.show.place ? `<p>${esc(t("rep_excluded"))}</p>` : `<table>
 ${row(t("rep_address"), esc([r.place.street, r.place.city].filter(Boolean).join(", ") || "—"))}
 ${row(t("rep_address_src"), esc(srcTxt))}
 ${row(t("rep_gps"), gps ? esc(fmtGps(gps)) + ` — <a href="${osm}">${esc(t("rep_map"))}</a>` : esc(t("band_nogps")))}
 ${row(t("rep_heading"), gps && Number.isFinite(gps.heading) ? esc(Math.round(((gps.heading % 360) + 360) % 360) + "°") : null)}
-</table>
+</table>`}
 
 <h2>${esc(t("rep_h_car"))}</h2>
 ${d ? `<table>
-${row(t("rep_speed"), esc(`${Math.round(Math.abs(d.speed) * 3.6)} km/h`))}
+${row(t("rep_speed"), r.show.speed ? esc(`${Math.round(Math.abs(d.speed) * 3.6)} km/h`) : esc(t("rep_excluded")))}
 ${row(t("rep_gear"), esc(GEARS[d.gear] || "?"))}
 ${row(t("rep_brake"), esc(t(d.brake ? "rep_yes" : "rep_no")))}
 ${row(t("rep_accel"), esc(`${Math.round(Math.max(0, Math.min(100, d.accel * r.accScale)))} %`))}
 ${row(t("rep_steer"), esc(`${Math.round(d.steer)}°`))}
 ${row(t("rep_blink"), esc(blink))}
 ${row(t("rep_ap"), esc(apName(d.ap) || t("manual")))}
-${row(t("rep_maxspeed"), esc(`${Math.round(st.maxSpeed * 3.6)} km/h`))}
+${row(t("rep_maxspeed"), r.show.speed ? esc(`${Math.round(st.maxSpeed * 3.6)} km/h`) : null)}
 ${row(t("rep_peakg"), st.peakG === null ? null : esc(`${fmtG(st.peakG)} g`))}
 </table>` : `<p>${esc(t("rep_notel"))}</p>`}
 ${moments ? `<p style="margin:3mm 0 0"><b>${esc(t("rep_moments"))}</b></p><ul>${moments}</ul>` : ""}
@@ -449,10 +561,11 @@ function refreshExportButton() {
 
 // What each preset sets. Every option stays editable under "Customize".
 const PRESETS = {
-  insurance: { range: "all", res: "1920", hud: true, place: true, speed: true, gps: true, pack: true, geo: true },
-  social: { hud: false, place: false, speed: false, gps: false, pack: false, geo: false },
+  // Insurance keeps the plates: the other party's plate is part of the evidence.
+  insurance: { range: "all", res: "1920", hud: true, place: true, speed: true, gps: true, pack: true, geo: true, blur: false },
+  social: { hud: false, place: false, speed: false, gps: false, pack: false, geo: false, blur: true },
 };
-const OPT_IDS = { hud: "#expHud", place: "#expPlace", speed: "#expSpeed", gps: "#expGps", pack: "#expPack", geo: "#expGeo" };
+const OPT_IDS = { hud: "#expHud", place: "#expPlace", speed: "#expSpeed", gps: "#expGps", pack: "#expPack", geo: "#expGeo", blur: "#expBlur" };
 let expMode = (() => { try { return localStorage.getItem("tcv.expMode") || "social"; } catch { return "social"; } })();
 const $e = s => document.querySelector(s);
 
@@ -546,14 +659,19 @@ async function runExport() {
       const m = reportMoment(segs);
       place = await resolvePlace(ev, eventSamples(ev, segs), m.at, o.geo);
     }
+    if (o.blur) await preparePlates(step);
+    step(pack ? t("st_video") : (o.blur ? t("st_video_blur") : ""), o.blur ? 0.02 : 0, pack ? 0.7 : 1);
     const target = () => new MB.StreamTarget(fileSink(f.id, () => {}), { chunked: true, chunkSize: 8 * 1024 * 1024 });
-    if (cam) {
+    if (cam && o.blur) {
+      // Blurring changes the picture, so this camera has to be re-encoded (no lossless copy).
+      await encodeMosaic(camId, camId === "front" ? 1920 : 1448, { blur: true }, segs, target(), job);
+    } else if (cam) {
       // Lossless first; re-encode only if the segments cannot be joined as they are.
       if (!(await remuxCamera(camId, segs, target(), job, !o.gps))) await encodeMosaic(camId, 1448, {}, segs, target(), job);
-    } else await encodeMosaic(layout, o.width, { hud: o.hud, speed: o.speed, band: o.place ? { place } : null }, segs, target(), job);
+    } else await encodeMosaic(layout, o.width, { hud: o.hud, speed: o.speed, band: o.place ? { place } : null, blur: o.blur }, segs, target(), job);
     videoOk = true;
     const r = lastVideo = await window.api.saveClose(f.id, true);
-    if (pack) await buildPackage(pack, ev, segs, place, r, job, step);
+    if (pack) await buildPackage(pack, ev, segs, place, r, job, step, o);
     ok = true;
   } catch (e) {
     if (job.output) { try { await job.output.cancel(); } catch {} }
@@ -565,8 +683,9 @@ async function runExport() {
     d.close();
     if (ok && done) {
       lastExport = done.path;   // the toast then becomes a link to the file or folder
-      toast(pack ? t("exp_done_pack", { name: pack.name }) + (place && place.onlineFailed ? " " + t("exp_geo_failed") : "")
-        : t("exp_done", { name: f.name, size: (done.size / 1048576).toFixed(done.size > 1048576 * 10 ? 0 : 1) }), 14000);
+      toast((pack ? t("exp_done_pack", { name: pack.name }) + (place && place.onlineFailed ? " " + t("exp_geo_failed") : "")
+        : t("exp_done", { name: f.name, size: (done.size / 1048576).toFixed(done.size > 1048576 * 10 ? 0 : 1) }))
+        + (o.blur ? " " + t("plate_done") : ""), 14000);
       clearTimeout(runExport.h); runExport.h = setTimeout(() => { lastExport = null; }, 14000);
     } else if (job.cancelled) toast(t("exp_cancelled"));
   }
@@ -575,7 +694,7 @@ async function runExport() {
 let lastExport = null, lastVideo = null;
 
 /** Originals, report and fingerprints, next to the exported video. */
-async function buildPackage(pack, ev, segs, place, video, job, step) {
+async function buildPackage(pack, ev, segs, place, video, job, step, o) {
   const files = segs.flatMap(s => CAMS.map(c => s.files[c.id]).filter(Boolean));
   if (!ev.encrypted) for (const p of [ev.json, ev.thumb]) if (p) files.push(p);   // only the car can read encrypted ones
   step(t("st_originals"), 0.7, 0.93);
@@ -593,8 +712,11 @@ async function buildPackage(pack, ev, segs, place, video, job, step) {
   let snapshot = null;
   try { snapshot = await snapshotAt(segs, m.at); } catch { /* the report works without it */ }
   job.progress(0.4);
+  const show = { place: o.place, speed: o.speed };
+  const summary = summaryLines(ev, segs, m, place, show);
+  await window.api.packText(pack.id, t("sum_file"), summary.join("\r\n") + "\r\n");
   const html = reportHtml({
-    ev, moment: m, range, place: place || { gps: null }, state: Analysis.summarize(samples, m.at), accScale: (segs[0].accScale || 100),
+    ev, moment: m, range, place: place || { gps: null }, state: Analysis.summarize(samples, m.at), accScale: (segs[0].accScale || 100), show, summary,
     moments: inRange, snapshot, files: await window.api.packFiles(pack.id), generated: new Date(), version: await window.api.appVersion(),
   });
   await window.api.packPdf(pack.id, html, t("pdf_name"));
@@ -602,6 +724,33 @@ async function buildPackage(pack, ev, segs, place, video, job, step) {
   await window.api.packSums(pack.id);
   job.progress(1);
 }
+
+// ---------- Factual summary dialog ----------
+let sumPlace = null;
+async function refreshSummary() {
+  const d = $e("#sumDlg");
+  if (!cur || !d.open) return;
+  const m = reportMoment(cur.segs);
+  if (!sumPlace || sumPlace.ev !== cur) sumPlace = { ev: cur, place: await resolvePlace(cur, eventSamples(cur), m.at, false) };   // no online lookup here
+  $e("#sumText").value = summaryLines(cur, cur.segs, m, sumPlace.place, { place: $e("#sumPlace").checked, speed: $e("#sumSpeed").checked }).join("\n");
+}
+async function openSummary() {
+  if (!cur) return;
+  $e("#sumText").value = "…";
+  $e("#sumDlg").showModal();
+  sumPlace = null;
+  await loadEventMoments(cur);
+  await refreshSummary();
+}
+document.querySelector("#sumBtn").onclick = openSummary;
+document.querySelector("#sumPlace").onchange = refreshSummary;
+document.querySelector("#sumSpeed").onchange = refreshSummary;
+document.querySelector("#sumClose").onclick = () => document.querySelector("#sumDlg").close();
+document.querySelector("#sumCopy").onclick = async () => {
+  const ta = $e("#sumText");
+  try { await navigator.clipboard.writeText(ta.value); } catch { ta.select(); document.execCommand("copy"); }
+  toast(t("sum_copied"));
+};
 
 document.querySelector("#exportBtn").onclick = openExportDialog;
 document.querySelector("#expGo").onclick = e => { e.preventDefault(); runExport(); };

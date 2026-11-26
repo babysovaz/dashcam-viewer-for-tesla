@@ -1,6 +1,9 @@
 // Driving moments found in Tesla's telemetry: hard braking, sharp turn, jolt, and the moments
-// the driver assistance switched off. Tesla does not document its accelerometer axes, so the
-// detection does not rely on them:
+// the driver assistance switched off. Tesla does not document its accelerometer axes. Measured on
+// real clips (software of April 2026, Model Y): gravity is already removed, x is lateral (+ when
+// turning right, r = 0.97 against speed × heading rate) and y is longitudinal with the sign
+// reversed (+ when braking, r = −0.90 against the speed change). The detection still does not
+// depend on those axes, in case another car or software reports them differently:
 //  - braking  = how fast the speed drops (speed is a documented, signed value);
 //  - turning  = speed × how fast the heading changes (the lateral acceleration of a curve);
 //  - jolt     = how far the accelerometer moves away from its usual value (whatever the axes
@@ -21,20 +24,25 @@
   const hasAcc = s => Number.isFinite(s.ax) && Number.isFinite(s.ay) && Number.isFinite(s.az);
 
   /**
-   * Adds `g` (dynamic acceleration, in g, 0 when steady) to each sample of one clip.
-   * The reference is the clip's median, which removes gravity and any mounting tilt.
+   * Adds to each sample of one clip `g` (dynamic acceleration, in g, ~0 when steady) and, from
+   * the measured axes, `brakeG` (+ braking, − accelerating) and `latG` (+ right, − left).
+   * An axis whose usual value is far from 0 (gravity or a tilted sensor, not seen on Tesla's
+   * current data) is re-centred on its median first.
    */
   function addGForce(samples) {
     const acc = samples.filter(hasAcc);
     if (acc.length < 10) return false;
-    const bx = median(acc.map(s => s.ax)), by = median(acc.map(s => s.ay)), bz = median(acc.map(s => s.az));
+    const centre = m => Math.abs(m) > 2 ? m : 0;
+    const bx = centre(median(acc.map(s => s.ax))), by = centre(median(acc.map(s => s.ay))), bz = centre(median(acc.map(s => s.az)));
     // A 4-frame moving average (~0.1 s at 36 fps) removes sensor noise without hiding a knock.
     const raw = samples.map(s => hasAcc(s) ? Math.hypot(s.ax - bx, s.ay - by, s.az - bz) / G : null);
     samples.forEach((s, i) => {
       if (raw[i] === null) return;
-      let sum = 0, n = 0;
-      for (let k = Math.max(0, i - 3); k <= i; k++) if (raw[k] !== null) { sum += raw[k]; n++; }
+      let sum = 0, n = 0, by4 = 0, lat4 = 0;
+      for (let k = Math.max(0, i - 3); k <= i; k++) if (raw[k] !== null) { sum += raw[k]; by4 += samples[k].ay - by; lat4 += samples[k].ax - bx; n++; }
       s.g = sum / n;
+      s.brakeG = by4 / n / G;
+      s.latG = lat4 / n / G;
     });
     return true;
   }
@@ -100,7 +108,8 @@
     const around = samples.filter(s => Math.abs(s.t - at) <= win);
     const maxSpeed = around.reduce((m, s) => Math.max(m, Math.abs(s.speed || 0)), 0);
     const gs = around.filter(s => Number.isFinite(s.g));
-    return { near, maxSpeed, peakG: gs.length ? Math.max(...gs.map(s => s.g)) : null, gap: Math.abs(near.t - at) };
+    const peak = k => { const v = around.filter(s => Number.isFinite(s[k])).map(s => s[k]); return v.length ? Math.max(...v) : null; };
+    return { near, maxSpeed, peakG: gs.length ? Math.max(...gs.map(s => s.g)) : null, peakBrakeG: peak("brakeG"), gap: Math.abs(near.t - at) };
   }
 
   const api = { addGForce, findMoments, summarize, LIMITS, G };

@@ -21,8 +21,13 @@ contextBridge.exposeInMainWorld("api", {
   packFiles: id => ipcRenderer.invoke("pack-files", id),
   packPdf: (id, html, name) => ipcRenderer.invoke("pack-pdf", id, html, name),
   packSums: id => ipcRenderer.invoke("pack-sums", id),
+  packText: (id, name, text) => ipcRenderer.invoke("pack-text", id, name, text),
   packClose: (id, ok) => ipcRenderer.invoke("pack-close", id, ok),
   geocode: (lat, lon, lang) => ipcRenderer.invoke("geocode", lat, lon, lang),
   appVersion: () => ipcRenderer.invoke("app-version"),
+  plateStatus: () => ipcRenderer.invoke("plate-status"),
+  plateDownload: () => ipcRenderer.invoke("plate-download"),
+  plateLoad: () => ipcRenderer.invoke("plate-load"),
+  plateDetect: rgba => ipcRenderer.invoke("plate-detect", rgba),
   onAuth: cb => ipcRenderer.on("auth-changed", (_e, s) => cb(s)),
 });

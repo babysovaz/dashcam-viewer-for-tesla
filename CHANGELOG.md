@@ -3,6 +3,20 @@
 Chaque version est décrite en français puis en anglais. Les notes de release GitHub sont générées à partir de ce fichier.
 Each version is described in French, then in English. GitHub release notes are generated from this file.
 
+## [0.7.0] - 2026-11-26
+
+### 🇫🇷 Français
+- **Floutage des plaques d'immatriculation par une IA locale**, activé par le mode 📱 Réseaux sociaux (réglable dans « Personnaliser »). La détection tourne sur ce PC (carte graphique via DirectML si possible, sinon processeur) ; le modèle (8 Mo, licence MIT) est téléchargé une seule fois depuis GitHub et vérifié. La caméra avant est analysée en trois tuiles pour ne pas rater les petites plaques. Le mode 🛡️ Assurance ne floute pas : la plaque de l'autre véhicule fait partie de la preuve.
+- **Résumé factuel** : bouton 📝 Résumé, fichier `Resume_factuel.txt` et section en tête de la fiche PDF. Des phrases à trous remplies avec les données de la voiture ; une phrase n'apparaît que si toutes ses informations sont disponibles et autorisées (lieu et vitesse peuvent être retirés). Français et anglais.
+- **Axes de l'accéléromètre mesurés sur de vrais clips** : la fiche distingue maintenant freinage et accélération latérale ; aucune fausse alerte en conduite normale.
+- La compilation vérifie sur Windows que la détection des plaques démarre (DirectML ou processeur).
+
+### 🇬🇧 English
+- **Licence plate blurring by a local AI**, turned on by the 📱 Social media preset (adjustable under “Customize”). Detection runs on this PC (graphics card through DirectML when possible, else the processor); the model (8 MB, MIT licence) is downloaded once from GitHub and checked. The front camera is read as three tiles so small plates are not missed. The 🛡️ Insurance preset does not blur: the other vehicle's plate is part of the evidence.
+- **Factual summary**: 📝 Summary button, `Factual_summary.txt` file and a section at the top of the PDF report. Fill-in-the-blank sentences completed with the car's data; a sentence only appears when all its information is available and allowed (place and speed can be left out). French and English.
+- **Accelerometer axes measured on real clips**: the report now tells braking from lateral acceleration; no false alarm in normal driving.
+- The build checks on Windows that plate detection starts (DirectML or processor).
+
 ## [0.6.0] - 2026-11-26
 
 ### 🇫🇷 Français

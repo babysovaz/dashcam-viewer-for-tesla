@@ -86,6 +86,19 @@ module.exports = async (win, entries, app) => {
     log("cancel returned:", await run("window.__p"));
     check("cancelled package folder removed", fs.readdirSync(OUT).length === before);
 
+    // Factual summary dialog (place and speed can be left out)
+    await run('openEvent(events.find(e => !e.encrypted))'); await sleep(2000);
+    await run("seekGlobal(4.58)"); await sleep(500);
+    await run("openSummary()"); await sleep(1500);
+    const full = await run('document.querySelector("#sumText").value');
+    log("summary:\n" + full);
+    fs.writeFileSync("/tmp/tcv-summary.png", (await win.webContents.capturePage()).toPNG());
+    await run('document.querySelector("#sumSpeed").checked = false; document.querySelector("#sumPlace").checked = false; refreshSummary()'); await sleep(800);
+    const bare = await run('document.querySelector("#sumText").value');
+    check("summary without speed/place has neither", !/km\/h|Testville|Rue du Test|°\s?[NS]/.test(bare) && /km\/h/.test(full) && /Testville/.test(full));
+    await run('document.querySelector("#sumDlg").close()');
+    check("insurance package has the factual summary", fs.readdirSync(pk1).some(f => /summary|Resume/i.test(f)));
+
     // Dialog screenshots
     await run('openExportDialog(); applyMode("insurance")'); await sleep(300);
     fs.writeFileSync("/tmp/tcv-dlg-ins.png", (await win.webContents.capturePage()).toPNG());

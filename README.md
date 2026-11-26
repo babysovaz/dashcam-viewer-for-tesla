@@ -16,7 +16,8 @@ A Windows player for the **Dashcam / Sentry Mode** clips a Tesla records on its 
   - *3×2 grid* or *front + rear* → **one mosaic video** of the 6 cameras laid out as on screen, with date/time and optional telemetry burned in, in Full HD (phone-friendly) or 4K. Encoded inside the app (H.264 via WebCodecs), no extra software.
 - **Two export presets** that decide what the file reveals:
   - 🛡️ **Insurance / claim** → a folder with the video (date, place, GPS and vehicle state in a band under the picture), the **untouched original clips** (decrypted, not re-encoded), a **PDF report** (place, vehicle state at the event, detected moments, snapshot of the 6 cameras) and **SHA-256 fingerprints** of every file;
-  - 📱 **Social media** → no place, speed hidden, and Tesla's telemetry — **GPS position included** — removed from single-camera files (picture untouched).
+  - 📱 **Social media** → **licence plates blurred by a local AI**, no place, speed hidden, and Tesla's telemetry — **GPS position included** — left out of the file.
+- **Factual summary** (📝 button and in the insurance PDF): plain sentences written only from the car's data — date, place, speed, gear, driver assistance, brake, turn signals, detected moments. A sentence only appears when all its data is available, and place or speed can be left out. French and English. No AI involved.
 - **Encrypted clips**: **local, on-the-fly** decryption — only what you watch gets decrypted, nothing is ever written to disk in clear.
 - **Telemetry** that Tesla embeds in the video: speed, gear, steering angle, accelerator, brake, turn signals, Autosteer / FSD, and the **felt acceleration (g)**.
 - **Detected moments** on the timeline: 🛑 hard braking, ↪️ sharp turn, 💥 jolt or impact, 🔵 driver assistance switched off — click one to jump there.
@@ -31,13 +32,16 @@ A Windows player for the **Dashcam / Sentry Mode** clips a Tesla records on its 
 - Received keys are stored **encrypted by Windows (DPAPI)**: a clip unlocked once replays offline.
 - **One exception, opt-in**: in the insurance preset, when the car did not record the address (encrypted clips, Recent clips), the town and road are looked up **once** on OpenStreetMap (Nominatim), which then receives that GPS position. Untick the option to keep everything offline: the report then shows the coordinates only.
 - The single-camera export keeps Tesla's telemetry, **GPS position included**, unless you pick the social media preset.
+- **Plate blurring runs entirely on your PC.** The first time, the detection model (8 MB, [open-image-models](https://github.com/ankandrew/open-image-models), MIT licence) is downloaded once from GitHub and checked against its SHA-256; no image is ever sent anywhere.
 
 ## Known limitations
 
 - Decryption relies on the **undocumented API** of Tesla's web viewer: a change on Tesla's side may break it.
 - In `EncryptedClips`, `event.json` and `thumb.png` carry no key metadata: only the car can read them. The event moment is then derived from the folder name (within a few seconds) and the thumbnail is taken from the video.
+- Measured on real clips (April 2026 software): gravity is already removed, x is lateral (+ right) and y is longitudinal with the sign reversed (+ braking). Normal driving stayed under 0.45 g with no false alarm.
 - Mosaic export re-encodes every frame: it uses the graphics card when available but stays much slower than the one-camera export, especially in 4K.
 - Telemetry only exists on recent clips (software 2025.44.25+, HW3+) and not while the car is parked — so no g-force or detected moments on parked Sentry events.
+- **Plate blurring is not perfect**: plates seen at a sharp angle, very far or in the dark can be missed. Watch the video before posting it. Faces are not blurred. Blurring re-encodes the video and makes the export several times slower (it uses the graphics card through DirectML when available).
 - Tesla does not document its accelerometer axes: the g-force is the deviation from each clip's usual value, and braking and turns are computed from the speed and the GPS heading. Thresholds are indicative.
 - The executable is unsigned: Windows SmartScreen asks for confirmation on first launch.
 
@@ -70,6 +74,8 @@ Shortcuts: `Space` play · `←/→` ±5 s (`Shift` ±1 s) · `1`–`6` camera �
 3. GitHub Actions builds the app on Windows, attaches it to the release and fills the description from the CHANGELOG.
 
 ## Credits
+
+- Licence plate detection: YOLOv9 plate model from [ankandrew/open-image-models](https://github.com/ankandrew/open-image-models) (MIT), run with [ONNX Runtime](https://onnxruntime.ai/) (MIT).
 
 - Encrypted container format and key request: reverse-engineering work published by [steiner-dominik/tesla-dashcam-decrypt](https://github.com/steiner-dominik/tesla-dashcam-decrypt), [crstian19/tesla-dashcam-decrypt-go](https://github.com/crstian19/tesla-dashcam-decrypt-go) and [pieczorx/tesla-manager](https://github.com/pieczorx/tesla-manager).
 - Video reading, joining and MP4 writing: [Mediabunny](https://mediabunny.dev/) (MPL-2.0).
