@@ -6,6 +6,7 @@ Each version is described in French, then in English. GitHub release notes are g
 ## [0.7.3] - 2026-11-26
 
 ### 🇫🇷 Français
+- **Nouvelle option « Masquer ma propre plaque »**, activée par défaut en mode 📱 Réseaux sociaux. Le bas de l'image de la caméra arrière, où l'on voit le pare-chocs et ta propre plaque, est recouvert d'une bande sombre. Le mode 🛡️ Assurance ne masque rien.
 - **Correction : la fin d'un clip pouvait tourner en boucle.** Quand l'image d'une caméra se fige avant la fin de son fichier (Chromium la met alors en pause sans la déclarer terminée), toutes les caméras étaient ramenées à ce moment figé et la même seconde se rejouait sans fin. L'horloge passe maintenant à une caméra qui avance encore ; la caméra figée garde sa dernière image et la lecture va jusqu'au bout.
 - **Correction : le panneau de télémétrie clignotait.** Centré, il changeait de largeur à chaque changement de chiffre (9 → 10 km/h, −3° → −10°…) et se décalait sur le côté plusieurs fois par seconde. Chaque valeur a maintenant une largeur fixe, et la case G-force ne disparaît plus sur les quelques images sans données d'accéléromètre.
 - Le panneau de télémétrie ne cache plus le nom des caméras en vue grille (il est placé juste en dessous et un peu plus compact).
@@ -13,6 +14,7 @@ Each version is described in French, then in English. GitHub release notes are g
 - La liste des événements ne déborde plus sur le côté (plus de barre de défilement horizontale ni de vignettes rognées).
 
 ### 🇬🇧 English
+- **New option “Hide my own plate”**, on by default in the 📱 Social media preset. The bottom of the rear camera picture, where the bumper and your own plate show, is covered with a dark band. The 🛡️ Insurance preset hides nothing.
 - **Fix: the end of a clip could play in a loop.** When one camera's picture froze before the end of its file (Chromium then pauses it without reporting it as ended), every camera was pulled back to that frozen moment and the same second replayed endlessly. The clock now moves to a camera that still plays; the frozen camera keeps its last picture and playback goes to the end.
 - **Fix: the telemetry panel flickered.** Being centred, it changed width whenever a number changed width (9 → 10 km/h, −3° → −10°…) and jumped sideways several times a second. Every value now has a fixed width, and the g box no longer disappears on the few frames without accelerometer data.
 - The telemetry panel no longer hides the camera names in the grid view (it sits just below them and is a little more compact).

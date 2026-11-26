@@ -210,6 +210,19 @@ async function detectPlates(frame) {
   }
   return found;
 }
+// The car's own plate: the rear camera sees the bumper at the bottom of its fisheye picture,
+// with the plate's characters stretched along the edge — not readable as a plate by the model,
+// but possibly by a person. The camera is fixed to the car, so the area is always the same:
+// a fixed shape under the bumper line, measured on real Model Y clips (proportions of the frame).
+const OWN_PLATE_MASK = [[0, 0.58], [0.12, 0.725], [0.28, 0.815], [0.5, 0.86], [0.72, 0.825], [0.88, 0.75], [1, 0.62], [1, 1], [0, 1]];
+function maskOwnPlate(g, x, y, w, h) {
+  g.save();
+  g.beginPath();
+  OWN_PLATE_MASK.forEach(([fx, fy], i) => (i ? g.lineTo : g.moveTo).call(g, x + fx * w, y + fy * h));
+  g.closePath();
+  g.fillStyle = "#1b1d21"; g.fill();
+  g.restore();
+}
 /** Wider and taller than the plate: it moves between two detections and must stay covered. */
 function grow([x, y, w, h], W, H) {
   const nx = Math.max(0, x - w * 0.35), ny = Math.max(0, y - h * 0.6);
@@ -306,7 +319,8 @@ function frameStepper(track) {
 /**
  * Compose the cameras of `layout` and encode them in H.264 (fallbacks: VP9, AV1).
  * opts: hud (telemetry over the front camera), speed (show it), band (insurance information
- * band under the video: { place }), blur (pixelate licence plates found by the local model).
+ * band under the video: { place }), blur (pixelate licence plates found by the local model),
+ * ownPlate (hide the car's own plate at the bottom of the rear camera).
  */
 async function encodeMosaic(layout, width, opts, segs, target, job) {
   const geo = exportGeometry(layout, width);
@@ -370,6 +384,7 @@ async function encodeMosaic(layout, width, opts, segs, target, job) {
               pixelate(g, tl.x + x * sx, tl.y + y * sy, w * sx, h * sy);
             }
           }
+          if (f && opts.ownPlate && tl.cam === "back") maskOwnPlate(g, tl.x, tl.y, tl.w, tl.h);
           if (label) drawLabel(g, t("cam_" + tl.cam) + (f ? "" : " — " + t("no_image")), tl.x + 6, tl.y + 5, labelSize);
         });
         const tIn = k / fps;
@@ -564,10 +579,10 @@ function refreshExportButton() {
 // What each preset sets. Every option stays editable under "Customize".
 const PRESETS = {
   // Insurance keeps the plates: the other party's plate is part of the evidence.
-  insurance: { range: "all", res: "1920", hud: true, place: true, speed: true, gps: true, pack: true, geo: true, blur: false },
-  social: { hud: false, place: false, speed: false, gps: false, pack: false, geo: false, blur: true },
+  insurance: { range: "all", res: "1920", hud: true, place: true, speed: true, gps: true, pack: true, geo: true, blur: false, own: false },
+  social: { hud: false, place: false, speed: false, gps: false, pack: false, geo: false, blur: true, own: true },
 };
-const OPT_IDS = { hud: "#expHud", place: "#expPlace", speed: "#expSpeed", gps: "#expGps", pack: "#expPack", geo: "#expGeo", blur: "#expBlur" };
+const OPT_IDS = { hud: "#expHud", place: "#expPlace", speed: "#expSpeed", gps: "#expGps", pack: "#expPack", geo: "#expGeo", blur: "#expBlur", own: "#expOwn" };
 let expMode = (() => { try { return localStorage.getItem("tcv.expMode") || "social"; } catch { return "social"; } })();
 const $e = s => document.querySelector(s);
 
@@ -664,13 +679,14 @@ async function runExport() {
     if (o.blur) await preparePlates(step);
     step(pack ? t("st_video") : (o.blur ? t("st_video_blur") : ""), o.blur ? 0.02 : 0, pack ? 0.7 : 1);
     const target = () => new MB.StreamTarget(fileSink(f.id, () => {}), { chunked: true, chunkSize: 8 * 1024 * 1024 });
-    if (cam && o.blur) {
-      // Blurring changes the picture, so this camera has to be re-encoded (no lossless copy).
-      await encodeMosaic(camId, camId === "front" ? 1920 : 1448, { blur: true }, segs, target(), job);
+    const ownHere = o.own && (!cam || camId === "back");
+    if (cam && (o.blur || ownHere)) {
+      // Blurring or masking changes the picture, so this camera has to be re-encoded.
+      await encodeMosaic(camId, camId === "front" ? 1920 : 1448, { blur: o.blur, ownPlate: ownHere }, segs, target(), job);
     } else if (cam) {
       // Lossless first; re-encode only if the segments cannot be joined as they are.
       if (!(await remuxCamera(camId, segs, target(), job, !o.gps))) await encodeMosaic(camId, 1448, {}, segs, target(), job);
-    } else await encodeMosaic(layout, o.width, { hud: o.hud, speed: o.speed, band: o.place ? { place } : null, blur: o.blur }, segs, target(), job);
+    } else await encodeMosaic(layout, o.width, { hud: o.hud, speed: o.speed, band: o.place ? { place } : null, blur: o.blur, ownPlate: o.own }, segs, target(), job);
     videoOk = true;
     const r = lastVideo = await window.api.saveClose(f.id, true);
     if (pack) await buildPackage(pack, ev, segs, place, r, job, step, o);

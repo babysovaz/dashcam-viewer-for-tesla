@@ -16,7 +16,7 @@ A Windows player for the **Dashcam / Sentry Mode** clips a Tesla records on its 
   - *3×2 grid* or *front + rear* → **one mosaic video** of the 6 cameras laid out as on screen, with date/time and optional telemetry burned in, in Full HD (phone-friendly) or 4K. Encoded inside the app (H.264 via WebCodecs), no extra software.
 - **Two export presets** that decide what the file reveals:
   - 🛡️ **Insurance / claim** → a folder with the video (date, place, GPS and vehicle state in a band under the picture), the **untouched original clips** (decrypted, not re-encoded), a **PDF report** (place, vehicle state at the event, detected moments, snapshot of the 6 cameras) and **SHA-256 fingerprints** of every file;
-  - 📱 **Social media** → **licence plates blurred by a local AI**, no place, speed hidden, and Tesla's telemetry — **GPS position included** — left out of the file.
+  - 📱 **Social media** → **licence plates blurred by a local AI** (your own plate, visible at the bottom of the rear camera, is hidden too), no place, speed hidden, and Tesla's telemetry — **GPS position included** — left out of the file.
 - **Factual summary** (📝 button and in the insurance PDF): plain sentences written only from the car's data — date, place, speed, gear, driver assistance, brake, turn signals, detected moments. A sentence only appears when all its data is available, and place or speed can be left out. French and English. No AI involved.
 - **Encrypted clips**: **local, on-the-fly** decryption — only what you watch gets decrypted, nothing is ever written to disk in clear.
 - **Telemetry** that Tesla embeds in the video: speed, gear, steering angle, accelerator, brake, turn signals, Autosteer / FSD, and the **felt acceleration (g)**.
