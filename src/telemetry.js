@@ -117,6 +117,9 @@ function decodeSei(buf) {
     gear: o[2] ?? 0, speed: o[4] ?? 0, accel: o[5] ?? 0, steer: o[6] ?? 0,
     blinkL: !!o[7], blinkR: !!o[8], brake: !!o[9], ap: o[10] ?? 0,
     lat: o[11], lon: o[12], heading: o[13],
+    // Linear acceleration in m/s² (fields 14-16). Tesla does not document the axes or whether
+    // gravity is included, so the app only uses deviations from each clip's usual value.
+    ax: o[14], ay: o[15], az: o[16],
   };
 }
 

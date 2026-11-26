@@ -1,5 +1,6 @@
 "use strict";
-const { app, BrowserWindow, dialog, ipcMain, protocol, shell } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, net, protocol, shell } = require("electron");
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const keys = require("./keys");
@@ -22,8 +23,8 @@ let sampleFile = null;
 // UI language, set by the renderer; only used for the few texts drawn by this process.
 let lang = "fr";
 const TXT = {
-  fr: { pick: "Choisir le dossier TeslaCam", login: "Connexion Tesla — dashcam.tesla.com", save: "Enregistrer la vidéo", video: "Vidéo MP4" },
-  en: { pick: "Choose the TeslaCam folder", login: "Tesla sign-in — dashcam.tesla.com", save: "Save the video", video: "MP4 video" },
+  fr: { pick: "Choisir le dossier TeslaCam", login: "Connexion Tesla — dashcam.tesla.com", save: "Enregistrer la vidéo", video: "Vidéo MP4", packDir: "Où créer le dossier pour l'assurance ?" },
+  en: { pick: "Choose the TeslaCam folder", login: "Tesla sign-in — dashcam.tesla.com", save: "Save the video", video: "MP4 video", packDir: "Where should the insurance folder be created?" },
 };
 const tx = k => (TXT[lang] || TXT.fr)[k];    // one encrypted clip, used to trigger the sign-in token capture
 
@@ -170,16 +171,17 @@ app.whenReady().then(() => {
   // a file the user picked. Nothing can be written anywhere else.
   const outs = new Map();   // id -> { fd, path }
   let outSeq = 0;
-  ipcMain.handle("save-open", async (_e, name) => {
+  ipcMain.handle("save-open", async (_e, name, packId) => {
     const safe = String(name || "video.mp4").replace(/[\\/:*?"<>|]/g, "_");
-    let target = process.env.TCV_TEST_OUT ? path.join(process.env.TCV_TEST_OUT, safe) : null;
+    const pack = packId && packs.get(packId);
+    let target = pack ? path.join(pack.dir, safe) : process.env.TCV_TEST_OUT ? path.join(process.env.TCV_TEST_OUT, safe) : null;
     if (!target) {
       const r = await dialog.showSaveDialog(mainWin, { title: tx("save"), defaultPath: path.join(app.getPath("videos"), safe), filters: [{ name: tx("video"), extensions: ["mp4"] }] });
       if (r.canceled || !r.filePath) return null;
       target = r.filePath;
     }
     const id = ++outSeq;
-    outs.set(id, { fd: fs.openSync(target, "w"), path: target });
+    outs.set(id, { fd: fs.openSync(target, "w"), path: target, pack });
     return { id, name: path.basename(target) };
   });
   ipcMain.handle("save-write", (_e, id, pos, data) => {
@@ -190,16 +192,125 @@ app.whenReady().then(() => {
     while (done < buf.length) done += fs.writeSync(o.fd, buf, done, buf.length - done, pos + done);
   });
   const written = new Set();   // finished files, the only ones "show in folder" may reveal
-  ipcMain.handle("save-close", (_e, id, ok) => {
+  ipcMain.handle("save-close", async (_e, id, ok) => {
     const o = outs.get(id);
     if (!o) return null;
     outs.delete(id);
     try { fs.closeSync(o.fd); } catch {}
     if (!ok) { try { fs.unlinkSync(o.path); } catch {} return null; }
     written.add(o.path);
+    if (o.pack) await hashInto(o.pack, o.path);
     return { path: o.path, size: fs.statSync(o.path).size };
   });
   ipcMain.handle("show-file", (_e, p) => { if (written.has(p)) shell.showItemInFolder(p); });
+
+  // ---- Insurance package: one new folder holding the video, the untouched original clips
+  // (decrypted, not re-encoded), a PDF report and SHA-256 fingerprints. Only this folder is
+  // ever written, and only clips from the opened TeslaCam folder are copied into it.
+  const packs = new Map();   // id -> { dir, hashes: Map(rel -> { size, sha256 }) }
+  let packSeq = 0;
+  const rel = (pack, p) => path.relative(pack.dir, p).split(path.sep).join("/");
+  async function hashInto(pack, p) {
+    const h = crypto.createHash("sha256");
+    await new Promise((res, rej) => fs.createReadStream(p).on("data", c => h.update(c)).on("end", res).on("error", rej));
+    pack.hashes.set(rel(pack, p), { size: fs.statSync(p).size, sha256: h.digest("hex") });
+  }
+  ipcMain.handle("pack-open", async (_e, name) => {
+    let parent = process.env.TCV_TEST_OUT || null;
+    if (!parent) {
+      const r = await dialog.showOpenDialog(mainWin, { title: tx("packDir"), defaultPath: app.getPath("videos"), properties: ["openDirectory", "createDirectory"] });
+      if (r.canceled || !r.filePaths[0]) return null;
+      parent = r.filePaths[0];
+    }
+    const base = String(name || "Tesla").replace(/[\\/:*?"<>|]/g, "_");
+    let dir = path.join(parent, base);
+    for (let n = 2; fs.existsSync(dir); n++) dir = path.join(parent, `${base} (${n})`);
+    fs.mkdirSync(dir);
+    const id = ++packSeq;
+    packs.set(id, { dir, hashes: new Map() });
+    return { id, dir, name: path.basename(dir) };
+  });
+  // Copy one original clip, decrypting it if needed, and fingerprint it on the way.
+  ipcMain.handle("pack-original", async (_e, id, p, sub) => {
+    const pack = packs.get(id);
+    if (!pack || !inRoot(p)) throw new Error("forbidden");
+    const destDir = path.join(pack.dir, String(sub || "originals").replace(/[\\/:*?"<>|.]/g, "_"));
+    fs.mkdirSync(destDir, { recursive: true });
+    const dest = path.join(destDir, path.basename(p));
+    const inf = keys.info(p);
+    const key = inf.kind === "container" ? keys.keyFor(p) : null;
+    if (inf.kind === "container" && !key) throw new Error("locked");
+    const total = key ? inf.plainSize : inf.size;
+    const h = crypto.createHash("sha256");
+    const src = fs.openSync(p, "r"), out = fs.openSync(dest, "w");
+    try {
+      for (let pos = 0; pos < total;) {
+        const e = Math.min(total - 1, pos + 4 * CHUNK - 1);
+        let buf;
+        if (key) buf = readRange(src, key, total, pos, e);
+        else { buf = Buffer.alloc(e - pos + 1); fs.readSync(src, buf, 0, buf.length, pos); }
+        fs.writeSync(out, buf); h.update(buf);
+        pos = e + 1;
+        await new Promise(r => setImmediate(r));   // keep the window responsive
+      }
+    } finally { fs.closeSync(src); fs.closeSync(out); }
+    pack.hashes.set(rel(pack, dest), { size: total, sha256: h.digest("hex") });
+    return rel(pack, dest);
+  });
+  ipcMain.handle("pack-files", (_e, id) => {
+    const pack = packs.get(id);
+    return pack ? [...pack.hashes].map(([r, v]) => ({ rel: r, ...v })).sort((a, b) => a.rel.localeCompare(b.rel)) : [];
+  });
+  // The report: an HTML page from the renderer, printed to PDF in a hidden, script-less window.
+  ipcMain.handle("pack-pdf", async (_e, id, html, name) => {
+    const pack = packs.get(id);
+    if (!pack) throw new Error("closed");
+    const win = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true, javascript: false } });
+    try {
+      await win.loadURL("data:text/html;charset=utf-8;base64," + Buffer.from(String(html), "utf8").toString("base64"));
+      const pdf = await win.webContents.printToPDF({ pageSize: "A4", printBackground: true, margins: { marginType: "none" } });
+      const dest = path.join(pack.dir, String(name || "report.pdf").replace(/[\\/:*?"<>|]/g, "_"));
+      fs.writeFileSync(dest, pdf);
+      await hashInto(pack, dest);
+      return rel(pack, dest);
+    } finally { win.destroy(); }
+  });
+  // SHA256SUMS.txt, in the usual "hash *file" format (checkable with sha256sum -c or certutil).
+  ipcMain.handle("pack-sums", (_e, id) => {
+    const pack = packs.get(id);
+    if (!pack) throw new Error("closed");
+    const lines = [...pack.hashes].sort(([a], [b]) => a.localeCompare(b)).map(([r, v]) => `${v.sha256} *${r}`);
+    fs.writeFileSync(path.join(pack.dir, "SHA256SUMS.txt"), lines.join("\r\n") + "\r\n");
+  });
+  ipcMain.handle("pack-close", (_e, id, ok) => {
+    const pack = packs.get(id);
+    if (!pack) return null;
+    packs.delete(id);
+    if (!ok) { fs.rmSync(pack.dir, { recursive: true, force: true }); return null; }   // only the folder created above
+    written.add(pack.dir);
+    return { path: pack.dir };
+  });
+
+  // ---- Street and town for a GPS position (insurance mode only, when the car's event.json is
+  // not readable): one request to OpenStreetMap's Nominatim, as its usage policy asks
+  // (identified app, one call at a time). Nothing else is sent.
+  ipcMain.handle("geocode", async (_e, lat, lon, l) => {
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return { error: "bad" };
+    if (process.env.TCV_TEST_GEOCODE) return JSON.parse(process.env.TCV_TEST_GEOCODE);
+    const u = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=17&addressdetails=1&lat=${lat.toFixed(6)}&lon=${lon.toFixed(6)}`;
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 8000);
+    try {
+      const r = await net.fetch(u, { signal: ctl.signal, headers: {
+        "User-Agent": `DashcamViewerForTesla/${app.getVersion()} (+https://github.com/babysovaz/dashcam-viewer-for-tesla)`,
+        "Accept-Language": l === "en" ? "en" : "fr" } });
+      if (!r.ok) return { error: "status", status: r.status };
+      const a = (await r.json()).address || {};
+      return { road: a.road || a.pedestrian || a.path || a.square || null,
+        city: a.city || a.town || a.village || a.municipality || a.hamlet || null, postcode: a.postcode || null };
+    } catch (e) { return { error: "network" }; }
+    finally { clearTimeout(timer); }
+  });
+  ipcMain.handle("app-version", () => app.getVersion());
   auth.onChange(s => mainWin && mainWin.webContents.send("auth-changed", s));
 
   createWindow();

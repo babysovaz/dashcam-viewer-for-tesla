@@ -14,8 +14,12 @@ Lecteur Windows pour les clips **Dashcam / Sentinelle** enregistrés par une Tes
 - **Export vidéo**, selon la vue affichée :
   - *une caméra en grand* → cette caméra enregistrée en **un seul MP4 pour tout l'événement, sans réencodage** (qualité d'origine, quelques secondes, déchiffrée si le clip l'était) ;
   - *grille 3×2* ou *avant + arrière* → **une vidéo mosaïque** des 6 caméras disposées comme à l'écran, avec date/heure et télémétrie incrustées au choix, en Full HD (idéal téléphone) ou 4K. Encodage dans l'application (H.264 via WebCodecs), sans logiciel supplémentaire.
+- **Deux modes d'export** qui décident de ce que le fichier révèle :
+  - 🛡️ **Assurance / constat** → un dossier avec la vidéo (date, lieu, GPS et état du véhicule dans un bandeau sous l'image), les **clips d'origine non modifiés** (déchiffrés, sans réencodage), une **fiche PDF** (lieu, état du véhicule au moment de l'événement, moments détectés, capture des 6 caméras) et les **empreintes SHA-256** de chaque fichier ;
+  - 📱 **Réseaux sociaux** → aucun lieu, vitesse masquée, et la télémétrie de Tesla — **position GPS comprise** — retirée des fichiers d'une caméra (image intacte).
 - **Clips chiffrés** : déchiffrement **local et à la volée** (seul ce qui est regardé est déchiffré, rien n'est écrit en clair sur le disque).
-- **Télémétrie** embarquée par Tesla dans la vidéo : vitesse, rapport, angle du volant, accélérateur, frein, clignotants, Autosteer / FSD.
+- **Télémétrie** embarquée par Tesla dans la vidéo : vitesse, rapport, angle du volant, accélérateur, frein, clignotants, Autosteer / FSD, et l'**accélération ressentie (g)**.
+- **Moments détectés** sur la timeline : 🛑 freinage brusque, ↪️ virage serré, 💥 secousse ou choc, 🔵 aide à la conduite désactivée — un clic pour y aller.
 - **Repère de l'événement** sur la timeline, vignettes, filtres Enregistrés / Sentinelle / Récents, raccourcis clavier.
 - **Interface en français / anglais**, selon la langue de Windows, modifiable à tout moment.
 
@@ -25,13 +29,16 @@ Lecteur Windows pour les clips **Dashcam / Sentinelle** enregistrés par une Tes
 - Pour un clip chiffré, seules ses **métadonnées de clé** (en-tête de ~200 octets) sont envoyées à `dashcam.tesla.com`, qui renvoie la clé du clip — exactement ce que fait le lecteur officiel de Tesla.
 - La connexion se fait sur la **vraie page Tesla**, dans une fenêtre de l'appli : le mot de passe ne va qu'à Tesla. Le jeton de session reste en mémoire.
 - Les clés reçues sont conservées **chiffrées par Windows (DPAPI)** : un clip déverrouillé une fois se relit hors connexion.
+- **Une exception, désactivable** : en mode assurance, si la voiture n'a pas noté l'adresse (clips chiffrés, clips Récents), la commune et la route sont demandées **une seule fois** à OpenStreetMap (Nominatim), qui reçoit alors cette position GPS. Décoche l'option pour tout garder hors ligne : la fiche n'affiche alors que les coordonnées.
+- L'export d'une caméra conserve la télémétrie de Tesla, **position GPS comprise**, sauf avec le mode réseaux sociaux.
 
 ## Limites connues
 
 - Le déchiffrement repose sur l'**API non documentée** du lecteur web de Tesla : une évolution côté Tesla peut le casser.
 - Dans `EncryptedClips`, `event.json` et `thumb.png` ne contiennent pas de métadonnées de clé : seule la voiture peut les lire. Le moment de l'événement est alors déduit du nom du dossier (≈ quelques secondes près) et la vignette est prise dans la vidéo.
 - L'export en mosaïque réencode chaque image : il utilise la carte graphique quand elle est disponible mais reste bien plus lent que l'export d'une caméra, surtout en 4K.
-- La télémétrie n'existe que sur les clips récents (logiciel 2025.44.25+, HW3+) et pas quand la voiture est garée.
+- La télémétrie n'existe que sur les clips récents (logiciel 2025.44.25+, HW3+) et pas quand la voiture est garée : pas de G-force ni de moments détectés sur un événement Sentinelle à l'arrêt.
+- Tesla ne documente pas les axes de son accéléromètre : la G-force est l'écart par rapport à la valeur habituelle de chaque clip, et les freinages et virages sont calculés à partir de la vitesse et du cap GPS. Les seuils sont indicatifs.
 - L'exécutable n'est pas signé : Windows SmartScreen demande une confirmation au premier lancement.
 
 ## Installation

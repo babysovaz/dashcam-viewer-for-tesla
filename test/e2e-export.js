@@ -32,7 +32,7 @@ module.exports = async (win, entries, app) => {
     await exp("focus/back encrypted all", 'setLayout("focus"); setMain("back")', 'document.querySelector("input[value=all]").checked = true');
 
     // 3. Grid mosaic of the encrypted event with a fake telemetry track for the HUD.
-    await run(`cur.segs.forEach(s => { s.tel = Array.from({length: 200}, (_, i) => ({ t: i * 0.05, speed: 10 + i * 0.1, gear: 1, steer: Math.sin(i / 20) * 90, accel: (i % 50) / 50, brake: i % 60 > 50, blinkL: i < 80, blinkR: false, ap: i > 100 ? 1 : 0 })); s.accScale = 100; })`);
+    await run(`cur.segs.forEach(s => { s.tel = Array.from({length: 200}, (_, i) => ({ t: i * 0.05, speed: 10 + i * 0.1, gear: 1, steer: Math.sin(i / 20) * 90, accel: (i % 50) / 50, brake: i % 60 > 50, blinkL: i < 80, blinkR: false, ap: i > 100 ? 1 : 0 })); s.accScale = 100; s.telP = Promise.resolve(); })`);
     await exp("grid hud HD all", 'setLayout("grid")', 'document.querySelector("input[value=all]").checked = true; document.querySelector("#expRes").value = "1920"; document.querySelector("#expHud").checked = true');
 
     // 4. Front+rear layout in 4K, current minute only, no HUD.

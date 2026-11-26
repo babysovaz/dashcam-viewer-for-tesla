@@ -51,6 +51,8 @@
   #hud .bar { width:10px; height:30px; background:#2a2d33; border-radius:3px; position:relative; overflow:hidden; } #hud .bar i { position:absolute; bottom:0; left:0; right:0; background:#3fb950; }
   #hud .pill { font-size:11px; font-weight:700; padding:3px 7px; border-radius:6px; background:#2a2d33; color:#555; }
   #hBrake.on { background:#c62828; color:#fff; } #hAp.on { background:#1565c0; color:#fff; }
+  #hud .gf { text-align:center; line-height:1; min-width:38px; } #hud .gf b { font-size:16px; font-variant-numeric:tabular-nums; display:block; } #hud .gf small { color:var(--dim); font-size:9px; }
+  #hud .gf.hi b { color:#ffcc00; }
   #hud .blink { font-size:18px; color:#333; } #hud .blink.on { color:#3fb950; animation:blk .7s steps(1) infinite; }
   @keyframes blk { 50% { opacity:.15; } }
   #hudNone { position:absolute; top:10px; left:50%; transform:translateX(-50%); z-index:3; pointer-events:none; font-size:11px; color:var(--dim); background:rgba(10,11,13,.7); padding:4px 10px; border-radius:8px; }
@@ -69,6 +71,9 @@
   #tl input { width:100%; margin:0; position:absolute; top:4px; accent-color:var(--acc); }
   #mark { position:absolute; top:2px; width:3px; height:20px; background:#ffcc00; border-radius:2px; display:none; z-index:2; pointer-events:none; }
   #mark .flag { position:absolute; top:-16px; left:-3px; color:#ffcc00; font-size:14px; pointer-events:auto; cursor:pointer; }
+  #moments { position:absolute; left:0; right:0; top:-11px; height:12px; pointer-events:none; }
+  #moments .mo { position:absolute; top:0; transform:translateX(-50%); font-size:11px; line-height:12px; cursor:pointer; pointer-events:auto; filter:drop-shadow(0 0 2px #000); }
+  #moments .mo:hover { transform:translateX(-50%) scale(1.4); }
   #row { display:flex; align-items:center; gap:10px; margin-top:6px; flex-wrap:wrap; }
   #clock { font-variant-numeric:tabular-nums; font-size:15px; font-weight:600; min-width:80px; }
   #rel { color:var(--dim); font-variant-numeric:tabular-nums; }
@@ -80,6 +85,14 @@
   #auth.on { border-color:#2e7d32; }
   #toast.link { cursor:pointer; }
   #expDlg label { display:block; margin:6px 0; }
+  #expDlg { max-width:560px; }
+  .modes { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:4px 0 10px; }
+  .modes button { text-align:left; padding:10px 12px; border-radius:10px; border:2px solid #33373e; background:#1c1f24; }
+  .modes button b { display:block; font-size:15px; margin-bottom:3px; } .modes button small { color:var(--dim); font-size:12px; line-height:1.35; display:block; }
+  .modes button.on { border-color:var(--acc); background:#241b1c; }
+  #expModeNote { font-size:12px; color:#e0c36a; background:#2a2617; border:1px solid #4a4125; border-radius:6px; padding:6px 9px; margin:6px 0; }
+  #expCustom summary { cursor:pointer; color:var(--dim); font-size:12px; margin-top:8px; }
+  #expCustom { border-top:1px solid var(--line); margin-top:8px; padding-top:4px; }
   #expDlg progress { width:100%; height:14px; accent-color:var(--acc); }
   #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#2b2f36; padding:10px 16px; border-radius:8px; border:1px solid #3a3f47; display:none; max-width:560px; z-index:9; }
 </style>
@@ -106,7 +119,7 @@
     <div id="empty"><div class="big">🎥</div><div data-i18n="empty"></div></div>
     <div id="stage" class="grid" hidden></div>
     <div id="bar" hidden>
-      <div id="tl"><input type="range" id="seek" min="0" max="60" step="0.05" value="0"><div id="mark"><span class="flag" data-i18n-title="flag_title">⚑</span></div></div>
+      <div id="tl"><input type="range" id="seek" min="0" max="60" step="0.05" value="0"><div id="moments"></div><div id="mark"><span class="flag" data-i18n-title="flag_title">⚑</span></div></div>
       <div id="row">
         <button id="prevEv" data-i18n-title="prev_ev">⏮</button>
         <button id="play" data-i18n-title="play_t">▶</button>
@@ -145,13 +158,25 @@
 <dialog id="expDlg">
   <h3 style="margin-top:0" id="expTitle"></h3>
   <div id="expForm">
-    <p id="expHint" style="color:var(--dim);font-size:12px;max-width:460px"></p>
+    <div class="modes">
+      <button type="button" data-mode="insurance"><b data-i18n="mode_ins"></b><small data-i18n="mode_ins_d"></small></button>
+      <button type="button" data-mode="social"><b data-i18n="mode_soc"></b><small data-i18n="mode_soc_d"></small></button>
+    </div>
+    <div id="expModeNote" hidden></div>
+    <p id="expHint" style="color:var(--dim);font-size:12px;max-width:520px"></p>
     <label><input type="radio" name="expRange" value="all" checked> <span id="expAllLbl"></span></label>
     <label><input type="radio" name="expRange" value="seg"> <span data-i18n="exp_seg"></span></label>
-    <div id="expMosaicOpts">
-      <label><span data-i18n="exp_res"></span> <select id="expRes"><option value="1920" data-i18n="exp_res_hd" selected></option><option value="3840" data-i18n="exp_res_4k"></option></select></label>
-      <label><input type="checkbox" id="expHud"> <span data-i18n="exp_hud"></span></label>
-    </div>
+    <details id="expCustom"><summary data-i18n="exp_custom"></summary>
+      <div id="expMosaicOpts">
+        <label><span data-i18n="exp_res"></span> <select id="expRes"><option value="1920" data-i18n="exp_res_hd" selected></option><option value="3840" data-i18n="exp_res_4k"></option></select></label>
+        <label><input type="checkbox" id="expHud"> <span data-i18n="exp_hud"></span></label>
+        <label><input type="checkbox" id="expPlace"> <span data-i18n="exp_place"></span></label>
+      </div>
+      <label><input type="checkbox" id="expSpeed"> <span data-i18n="exp_speed"></span></label>
+      <label id="expGpsLbl"><input type="checkbox" id="expGps"> <span data-i18n="exp_gps"></span></label>
+      <label><input type="checkbox" id="expPack"> <span data-i18n="exp_pack"></span></label>
+      <label><input type="checkbox" id="expGeo"> <span data-i18n="exp_geo"></span></label>
+    </details>
     <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end">
       <button id="expCancel" data-i18n="close"></button>
       <button id="expGo" class="primary" data-i18n="exp_go"></button>
@@ -164,6 +189,7 @@
   </div>
 </dialog>
 <script src="i18n.js"></script>
+<script src="analysis.js"></script>
 <script src="../node_modules/mediabunny/dist/bundles/mediabunny.min.cjs"></script>
 <script>
 "use strict";
@@ -239,6 +265,7 @@ stage.insertAdjacentHTML("beforeend", `
     <svg id="hWheel" viewBox="-12 -12 24 24"><circle r="10" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M-10 0H10M0 0V10" stroke="currentColor" stroke-width="2.2"/></svg>
     <span id="hSteer">0°</span>
     <div class="ped"><div class="bar"><i id="hAcc"></i></div><span data-i18n="accel"></span></div>
+    <div class="gf" id="hGf" data-i18n-title="g_t"><b id="hG">0.00</b><small>g</small></div>
     <span id="hBrake" class="pill" data-i18n="brake"></span>
     <span id="hAp" class="pill">—</span>
   </div>
@@ -272,16 +299,55 @@ function updateHud(seg, time) {   // not "t": that is the translation function
   $("#hBlinkR").classList.toggle("on", d.blinkR);
   $("#hAp").textContent = apName(d.ap) || t("manual");
   $("#hAp").classList.toggle("on", !!apName(d.ap));
+  const gf = $("#hGf");
+  gf.hidden = !Number.isFinite(d.g);
+  if (!gf.hidden) { $("#hG").textContent = fmtG(d.g); gf.classList.toggle("hi", d.g >= 0.4); }
 }
-async function loadTelemetry(seg) {
-  if (seg.tel !== undefined) return;
-  seg.tel = null;                                      // loading
+function loadTelemetry(seg) {
+  // One load per clip, shared by the HUD, the moments and the export (they may ask at once).
+  if (!seg.telP) { seg.tel = null; seg.telP = readTelemetry(seg); }   // null = loading
+  return seg.telP;
+}
+async function readTelemetry(seg) {
   const p = seg.files.front || Object.values(seg.files)[0];
   const d = await window.api.telemetry(p);
   seg.tel = d || [];
   // Pedal position may come as 0–1 or 0–100 depending on firmware: scale to percent.
   const max = seg.tel.reduce((m, x) => Math.max(m, x.accel), 0);
   seg.accScale = max > 1.5 ? 1 : 100;
+  Analysis.addGForce(seg.tel);
+}
+/** Telemetry of a whole event, as one list in event time (seconds from the event start). */
+function eventSamples(ev, segs = ev.segs) {
+  return segs.flatMap(s => Array.isArray(s.tel) ? s.tel.map(x => ({ ...x, t: s.offset + x.t })) : []);
+}
+// Moments (hard braking, sharp turn, jolt, assistance off) for the whole event, shown on the
+// timeline. Loaded in the background clip after clip once the event is open.
+const MOMENT_ICON = { brake: "🛑", turn: "↪️", jolt: "💥", apOff: "🔵" };
+async function loadEventMoments(ev) {
+  if (ev.moments) return ev.moments;
+  for (const s of ev.segs) await loadTelemetry(s);
+  ev.moments = Analysis.findMoments(eventSamples(ev));
+  if (ev === cur) renderMoments();
+  return ev.moments;
+}
+function momentText(m) {
+  const when = fmtTime(new Date(cur.start.getTime() + m.t * 1000));
+  return m.kind === "apOff" ? t("mo_apOff", { what: apName(m.value) || "", time: when })
+    : t("mo_" + m.kind, { g: fmtG(m.value), time: when });
+}
+function renderMoments() {
+  const box = $("#moments");
+  box.innerHTML = "";
+  if (!cur || !cur.moments) return;
+  for (const m of cur.moments) {
+    const el = document.createElement("span");
+    el.className = "mo"; el.textContent = MOMENT_ICON[m.kind];
+    el.style.left = `${(m.t / total()) * 100}%`;
+    el.title = momentText(m) + t("mo_click");
+    el.onclick = () => seekGlobal(Math.max(0, m.t - 2));
+    box.appendChild(el);
+  }
 }
 
 // ---------- Scan ----------
@@ -418,6 +484,7 @@ async function makeThumbs() {
 // ---------- List ----------
 const fmtDay = d => d.toLocaleDateString(locale(), { weekday:"long", day:"numeric", month:"long", year:"numeric" });
 const fmtTime = d => d.toLocaleTimeString(locale(), { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+const fmtG = v => v.toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDur = s => { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 
 function renderList() {
@@ -532,6 +599,8 @@ async function openEvent(ev) {
   const startAt = eo !== null && ev.type !== "RecentClips" ? Math.max(0, eo - 10) : 0;
   await seekGlobal(startAt, true);
   updateMarker();
+  renderMoments();
+  loadEventMoments(ev).catch(() => {});
 }
 
 function segAt(g) {
@@ -559,7 +628,7 @@ async function loadSegment(i, tIn) {
   const m = vids[masterId()];
   await new Promise(res => { if (m.readyState >= 1) res(); else { m.addEventListener("loadedmetadata", res, { once:true }); m.addEventListener("error", res, { once:true }); } });
   if (token !== loadToken) return;
-  if (isFinite(m.duration) && m.duration > 0) { seg.dur = m.duration; $("#seek").max = total(); }
+  if (isFinite(m.duration) && m.duration > 0) { seg.dur = m.duration; $("#seek").max = total(); renderMoments(); }
   for (const c of CAMS) if (urls[c.id]) { try { vids[c.id].currentTime = Math.min(tIn, seg.dur - 0.05); } catch {} }
   if (playing) playAll();
 }
@@ -715,6 +784,7 @@ function refreshTexts() {
     $("#info").textContent = [typeName(cur.type), cur.meta && cur.meta.street, cur.meta && cur.meta.city, cur.meta && reasonName(cur.meta.reason),
       et && t("info_event", { approx: et.approx ? "≈ " : "", time: fmtTime(et.d) })].filter(Boolean).join(" · ");
     updateMarker();
+    renderMoments();
   }
   if (typeof refreshExportButton === "function") refreshExportButton();
   window.api.setLang(LANG);

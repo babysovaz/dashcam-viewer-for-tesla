@@ -3,6 +3,26 @@
 Chaque version est décrite en français puis en anglais. Les notes de release GitHub sont générées à partir de ce fichier.
 Each version is described in French, then in English. GitHub release notes are generated from this file.
 
+## [0.6.0] - 2026-11-26
+
+### 🇫🇷 Français
+- **Deux modes d'export**, choisis d'un clic dans la fenêtre d'export :
+  - 🛡️ **Assurance / constat** : crée un dossier avec la vidéo (bandeau sous l'image : date et heure à la seconde, commune et route, coordonnées GPS et cap, vitesse, rapport, frein, clignotants, aide à la conduite, G-force), les **clips d'origine non modifiés** de toutes les caméras (déchiffrés, sans réencodage), une **fiche PDF** (lieu, état du véhicule au moment de l'événement, vitesse maximale et G-force maximale à ± 10 s, moments détectés, capture des 6 caméras) et les **empreintes SHA-256** de chaque fichier (aussi dans `SHA256SUMS.txt`).
+  - 📱 **Réseaux sociaux** : aucun lieu affiché, vitesse masquée, et **la télémétrie de Tesla, position GPS comprise, est retirée** des vidéos d'une caméra (image intacte, toujours sans réencodage).
+  - Chaque réglage reste modifiable dans « Personnaliser ».
+- **Adresse en mode assurance** : celle notée par la voiture (`event.json`) quand elle est lisible ; sinon, et seulement si l'option est cochée, la commune et la route sont demandées une fois à OpenStreetMap à partir de la position GPS.
+- **G-force** dans la télémétrie (accélération ressentie, à 0 en conduite régulière), à l'écran et dans les vidéos exportées.
+- **Moments détectés** sur la timeline : 🛑 freinage brusque, ↪️ virage serré, 💥 secousse ou choc, 🔵 FSD / Autosteer désactivé. Un clic pour y aller.
+
+### 🇬🇧 English
+- **Two export presets**, one click in the export window:
+  - 🛡️ **Insurance / claim**: creates a folder with the video (band under the picture: date and time to the second, town and road, GPS coordinates and heading, speed, gear, brake, turn signals, driver assistance, g-force), the **untouched original clips** of every camera (decrypted, not re-encoded), a **PDF report** (place, vehicle state at the event, top speed and peak g within ± 10 s, detected moments, snapshot of the 6 cameras) and **SHA-256 fingerprints** of every file (also in `SHA256SUMS.txt`).
+  - 📱 **Social media**: no place shown, speed hidden, and **Tesla's telemetry, GPS position included, is removed** from single-camera videos (picture untouched, still no re-encoding).
+  - Every setting stays editable under “Customize”.
+- **Address in the insurance preset**: the one the car recorded (`event.json`) when readable; otherwise, and only if the option is ticked, the town and road are looked up once on OpenStreetMap from the GPS position.
+- **G-force** in the telemetry (felt acceleration, 0 when driving steadily), on screen and in exported videos.
+- **Detected moments** on the timeline: 🛑 hard braking, ↪️ sharp turn, 💥 jolt or impact, 🔵 FSD / Autosteer switched off. Click one to jump there.
+
 ## [0.5.2] - 2026-11-26
 
 ### 🇫🇷 Français
