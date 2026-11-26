@@ -3,6 +3,16 @@
 Chaque version est décrite en français puis en anglais. Les notes de release GitHub sont générées à partir de ce fichier.
 Each version is described in French, then in English. GitHub release notes are generated from this file.
 
+## [0.5.2] - 2026-11-26
+
+### 🇫🇷 Français
+- **Correction : l'export vidéo échouait** dans les versions téléchargées (0.5.0 et 0.5.1) avec le message « Cannot read properties of undefined (reading 'StreamTarget') ». La bibliothèque vidéo n'était pas incluse dans l'application compilée sous Windows ; elle l'est de nouveau.
+- La compilation vérifie maintenant que tous les fichiers de l'interface sont bien présents avant de publier une version.
+
+### 🇬🇧 English
+- **Fix: video export failed** in the downloaded builds (0.5.0 and 0.5.1) with “Cannot read properties of undefined (reading 'StreamTarget')”. The video library was left out of the app built on Windows; it is back in.
+- The build now checks that every file the interface loads is in the app before a release is published.
+
 ## [0.5.1] - 2026-11-23
 
 ### 🇫🇷 Français

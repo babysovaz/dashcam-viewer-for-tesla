@@ -54,6 +54,9 @@ jobs:
       - name: Package
         run: npm run package
 
+      - name: Check the packaged app (every file the UI loads is inside)
+        run: node scripts/check-package.js
+
       - name: Installer (Setup.exe, built from the same packaged app)
         run: npm run installer
 
